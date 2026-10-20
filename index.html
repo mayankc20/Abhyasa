@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#fbf6ec" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#13122a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f3ff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14112a" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Abhyasa">
@@ -15,37 +15,37 @@
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <script src="platform.js"></script>
 <title>Abhyāsa</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Mukta:wght@400;500;600&family=Tiro+Devanagari+Sanskrit&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;500;600;700&family=Tiro+Devanagari+Sanskrit&display=swap">
 <style>
 /* Layout: an app with four tabs (Today, Plan, Progress, Notes). Bottom tab bar on phones, top tab bar on wide screens. Temple palette: saffron, peacock teal, tulasi green and gold on soft ivory by day, deep night-indigo after dark. */
 :root{
-  --bg:#fbf6ec; --surface:#fffdf8; --ink:#2a1f3d; --muted:#6e6378; --line:#eadfcb;
-  --accent:#0f6d7a; --accent-soft:#dff0ef; --saffron:#d9720b; --saffron-soft:#fdebd3; --gold:#b8860b; --gold-soft:#f6ead0;
+  --bg:#f6f3ff; --surface:#ffffff; --ink:#241a4d; --muted:#6a6290; --line:#e6dff8;
+  --accent:#0b8fd6; --accent-soft:#dff2fd; --saffron:#7b3fe4; --saffron-soft:#efe6ff; --gold:#d9a400; --gold-soft:#fff5cc;
   --tulasi:#3f7d3a; --good:#3f7d3a; --warn:#c0521b; --on-accent:#ffffff;
-  --sky1:#fde7c8; --sky2:#f7c58e; --sky3:#e98a4d;
+  --sky1:#e9e0ff; --sky2:#bfe6ff; --sky3:#ffe27a;
   --c-spiritual:#d9720b; --c-thoughts:#7a4fb0; --c-productivity:#2c5aa0; --c-research:#0f6d7a;
   --c-sleep:#4a5b8f; --c-food:#3f7d3a; --c-media:#b8395a; --c-private:#7a7080; --c-service:#a3519b;
-  --q1:#b8395a; --q2:#d9720b; --q3:#0f6d7a; --q4:#8a8090;
-  --display:"Cormorant Garamond",Georgia,"Times New Roman",serif;
-  --body:"Mukta",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --q1:#d6336c; --q2:#e0a100; --q3:#0b8fd6; --q4:#8a8090;
+  --display:"Baloo 2","Nunito",system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
   --deva:"Tiro Devanagari Sanskrit","Noto Serif Devanagari","Mukta",serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#13122a; --surface:#1d1b3a; --ink:#f4ead6; --muted:#b0a6be; --line:#302d55;
-  --accent:#4fc3c9; --accent-soft:#1b3a47; --saffron:#ffa53a; --saffron-soft:#3b2a1a; --gold:#e3b65a; --gold-soft:#332b1e;
-  --tulasi:#7cc474; --good:#7cc474; --warn:#ff8a55; --on-accent:#13122a;
-  --sky1:#1b1a3d; --sky2:#2b2560; --sky3:#5a3a7a;
+  --bg:#14112a; --surface:#1f1a3f; --ink:#f4f0ff; --muted:#b7aedb; --line:#372e63;
+  --accent:#5ccbff; --accent-soft:#163650; --saffron:#b892ff; --saffron-soft:#2f2456; --gold:#ffd447; --gold-soft:#3b3217;
+  --tulasi:#7cc474; --good:#7cc474; --warn:#ff8a55; --on-accent:#14112a;
+  --sky1:#1d1842; --sky2:#243f73; --sky3:#6b4fb0;
   --c-spiritual:#ffa53a; --c-thoughts:#b693f0; --c-productivity:#8fb0ff; --c-research:#4fc3c9;
   --c-sleep:#99a8e0; --c-food:#7cc474; --c-media:#f07a98; --c-private:#a59bb0; --c-service:#e08ed6;
-  --q1:#f07a98; --q2:#ffa53a; --q3:#4fc3c9; --q4:#a59bb0; color-scheme:dark}}
+  --q1:#ff7aa8; --q2:#ffd447; --q3:#5ccbff; --q4:#a59bb0; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#13122a; --surface:#1d1b3a; --ink:#f4ead6; --muted:#b0a6be; --line:#302d55;
-  --accent:#4fc3c9; --accent-soft:#1b3a47; --saffron:#ffa53a; --saffron-soft:#3b2a1a; --gold:#e3b65a; --gold-soft:#332b1e;
-  --tulasi:#7cc474; --good:#7cc474; --warn:#ff8a55; --on-accent:#13122a;
-  --sky1:#1b1a3d; --sky2:#2b2560; --sky3:#5a3a7a;
+  --bg:#14112a; --surface:#1f1a3f; --ink:#f4f0ff; --muted:#b7aedb; --line:#372e63;
+  --accent:#5ccbff; --accent-soft:#163650; --saffron:#b892ff; --saffron-soft:#2f2456; --gold:#ffd447; --gold-soft:#3b3217;
+  --tulasi:#7cc474; --good:#7cc474; --warn:#ff8a55; --on-accent:#14112a;
+  --sky1:#1d1842; --sky2:#243f73; --sky3:#6b4fb0;
   --c-spiritual:#ffa53a; --c-thoughts:#b693f0; --c-productivity:#8fb0ff; --c-research:#4fc3c9;
   --c-sleep:#99a8e0; --c-food:#7cc474; --c-media:#f07a98; --c-private:#a59bb0; --c-service:#e08ed6;
-  --q1:#f07a98; --q2:#ffa53a; --q3:#4fc3c9; --q4:#a59bb0; color-scheme:dark}
+  --q1:#ff7aa8; --q2:#ffd447; --q3:#5ccbff; --q4:#a59bb0; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{background:var(--bg)}
@@ -224,6 +224,15 @@ select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:6px 
 .sheet h3{font-family:var(--display);font-size:1.25rem;margin:0}
 .sheet p{margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* vibrant theme: purple brand, sky blue accents, sunny yellow highlights */
+.hero .verse,.mantra{font-style:normal}
+.hero .greet{font-weight:800;letter-spacing:-.01em}
+h2{font-weight:700;letter-spacing:-.01em}
+button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srgb,var(--saffron) 55%,var(--accent)));border-color:transparent;box-shadow:0 6px 16px -8px var(--saffron)}
+.tabs button[aria-selected="true"]{background:linear-gradient(135deg,var(--saffron-soft),var(--accent-soft))}
+.panel,.stat,.snip{box-shadow:0 8px 24px -18px color-mix(in srgb,var(--saffron) 60%,transparent)}
+.mantra{color:color-mix(in srgb,var(--gold) 75%,var(--saffron))}
 </style>
 </head>
 <body>
@@ -875,7 +884,7 @@ function japaRing(rounds, done){
   for(let i=0;i<n;i++){ const a = -Math.PI/2 + i*2*Math.PI/n, x = cx+Math.cos(a)*r, y = cy+Math.sin(a)*r, on = i < (rounds||0);
     s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="6.2" fill="${on?"var(--tulasi)":"none"}" stroke="${on?"var(--tulasi)":"var(--line)"}" stroke-width="2"/>`; }
   s += `<circle cx="${cx}" cy="${cy-r-1}" r="3" fill="var(--gold)"/>`;
-  s += `<text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="Cormorant Garamond,Georgia,serif" font-weight="700" font-size="26" fill="var(--ink)">${rounds??"–"}</text>`;
+  s += `<text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="Baloo 2,Nunito,sans-serif" font-weight="800" font-size="26" fill="var(--ink)">${rounds??"–"}</text>`;
   s += `<text x="${cx}" y="${cy+16}" text-anchor="middle" font-size="10" fill="var(--muted)">${done!=null?"done "+fromMin(done):"rounds"}</text></svg>`;
   return s;
 }
