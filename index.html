@@ -464,7 +464,14 @@ select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:6px 
     </section>
     <div id="jOpen" class="view" hidden>
       <section class="panel" aria-labelledby="jWriteH">
-        <div class="head"><h2 id="jWriteH"><svg class="lotus"><use href="#i-lotus"/></svg>Dear diary</h2><button class="link" id="lockBtn">Lock now</button></div>
+        <div class="head"><h2 id="jWriteH"><svg class="lotus"><use href="#i-lotus"/></svg>Dear diary</h2><span class="row"><button class="link" id="pwChangeBtn">Change password</button><button class="link" id="lockBtn">Lock now</button></span></div>
+        <form id="pwChangeForm" class="lockform" hidden>
+          <input type="password" id="pwOld" placeholder="Current password" autocomplete="current-password">
+          <input type="password" id="pwNew1" placeholder="New password (8+ characters)" autocomplete="new-password">
+          <input type="password" id="pwNew2" placeholder="New password again" autocomplete="new-password">
+          <div class="row"><button class="primary" type="submit">Change password</button><button type="button" class="link" id="pwCancel">Cancel</button></div>
+          <div class="hint" id="pwChangeStatus" role="status"></div>
+        </form>
         <textarea id="jInput" style="min-height:160px" placeholder="How was today, really? What did you feel, what stayed with you, what do you want to say that no one else will hear…"></textarea>
         <div class="moodrow">
           <label for="moodIn" class="label">Mood</label>
@@ -1088,6 +1095,18 @@ async function open_(key, rec){
   const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:unb64(rec.iv)}, key, unb64(rec.ct));
   return JSON.parse(new TextDecoder().decode(pt));
 }
+/* The data key never changes. A password change only re-wraps it, so entries stay as they are. */
+const rawKey = async (pw, salt, iter) => {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  return crypto.subtle.deriveBits({name:"PBKDF2", salt, iterations:iter, hash:"SHA-256"}, base, 256);
+};
+const importKey = raw => crypto.subtle.importKey("raw", raw, {name:"AES-GCM"}, false, ["encrypt","decrypt"]);
+async function vaultRaw(pw, v){
+  if(!v.wrapped) return rawKey(pw, unb64(v.salt), v.iter);
+  const kek = await deriveKey(pw, unb64(v.salt), v.iter);
+  return unb64((await open_(kek, v.wrapped)).k).buffer;
+}
+async function vaultKey(pw, v){ return importKey(await vaultRaw(pw, v)); }
 function lockJournal(){ jKey = null; jPlain = {}; $("jAnswer").textContent = ""; $("jAskInput").value = ""; clearTimeout(jLockTimer); renderJournal(); }
 function touchJournal(){ clearTimeout(jLockTimer); if(jKey) jLockTimer = setTimeout(lockJournal, 5*60*1000); }
 ["input","click","keydown"].forEach(ev=>$("view-journal").addEventListener(ev, touchJournal));
@@ -1106,7 +1125,7 @@ $("setupForm").onsubmit = async e => { e.preventDefault();
 $("unlockForm").onsubmit = async e => { e.preventDefault();
   $("unlockStatus").textContent = "Unlocking…";
   try{
-    const key = await deriveKey($("pwIn").value, unb64(vault.salt), vault.iter);
+    const key = await vaultKey($("pwIn").value, vault);
     await open_(key, vault.check);
     jKey = key; $("pwIn").value = ""; $("unlockStatus").textContent = ""; touchJournal(); renderJournal();
   }catch(err){ $("unlockStatus").textContent = "That password doesn't open this journal."; }
@@ -1126,6 +1145,24 @@ Return JSON only: {"text":"...","feelings":["..."],"mood":n}
 Entry:
 ${text}`, {modelTier:"quick"});
 }
+$("pwChangeBtn").onclick = () => { $("pwChangeForm").hidden = !$("pwChangeForm").hidden; $("pwChangeStatus").textContent = ""; };
+$("pwCancel").onclick = () => { $("pwChangeForm").hidden = true; ["pwOld","pwNew1","pwNew2"].forEach(i=>$(i).value=""); };
+$("pwChangeForm").onsubmit = async e => { e.preventDefault();
+  const a = $("pwNew1").value, b = $("pwNew2").value, st = $("pwChangeStatus");
+  if(a.length < 8){ st.textContent = "Use at least 8 characters."; return; }
+  if(a !== b){ st.textContent = "The two new passwords don't match."; return; }
+  st.textContent = "Changing…";
+  let raw;
+  try{ raw = await vaultRaw($("pwOld").value, vault); await open_(await importKey(raw), vault.check); }
+  catch(err){ st.textContent = "The current password isn't right."; return; }
+  try{
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iter = 310000, kek = await deriveKey(a, salt, iter);
+    const wrapped = await seal(kek, {k:b64(raw)});
+    await saveDoc("vault", {kind:"vault", salt:b64(salt), iter, wrapped, check:vault.check, createdAt:vault.createdAt||Date.now(), changedAt:Date.now()});
+    ["pwOld","pwNew1","pwNew2"].forEach(i=>$(i).value=""); $("pwChangeForm").hidden = true;
+    $("jStatus").textContent = "Password changed. Use the new one from now on.";
+  }catch(err){ st.textContent = "Couldn't change it ("+(err.code||err.message)+"). Your old password still works."; }
+};
 micFor("jMic","jInput","jStatus");
 $("jSave").onclick = async () => {
   const text = $("jInput").value.trim(); if(!text || !jKey){ $("jInput").focus(); return; }
