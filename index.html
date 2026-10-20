@@ -763,7 +763,7 @@ function localParse(text){
 async function askJSON(instr, text){
   const sample = await claude.use("sample");
   if(!sample) return null;
-  return sample.json(instr+"\n\nDictation:\n"+text, {modelTier:"default"});
+  return sample.json(instr+"\n\nDictation:\n"+text, {modelTier:"quick"});
 }
 
 /* ---------- capture ---------- */

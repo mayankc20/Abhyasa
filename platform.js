@@ -81,7 +81,8 @@
   };
 
   /* Claude with the user's own API key */
-  const MODEL = "claude-opus-5-5";
+  // Haiku for quick parsing (notes, plans), Sonnet for advice and reflection: keeps the yearly cost low.
+  const MODELS = {quick:"claude-haiku-5-5", default:"claude-sonnet-5-5"};
   let clientP = null, clientKey = null;
   async function client(){
     const key = await settings.get("apiKey");
@@ -94,10 +95,10 @@
   }
   const toMessages = input => typeof input === "string" ? [{role:"user", content:input}] : input;
   function params(input, opts){
+    const quick = opts && opts.modelTier === "quick";
     return {
-      model: MODEL, max_tokens: 16000,
-      output_config: {effort: opts && opts.modelTier === "quick" ? "low" : "medium"},
-      betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+      model: quick ? MODELS.quick : MODELS.default, max_tokens: 16000,
+      output_config: {effort: quick ? "low" : "medium"},
       messages: toMessages(input)
     };
   }
@@ -114,7 +115,7 @@
     if(!c) return null;
     async function sample(input, opts = {}){
       try{
-        const stream = c.beta.messages.stream(params(input, opts), opts.signal ? {signal:opts.signal} : undefined);
+        const stream = c.messages.stream(params(input, opts), opts.signal ? {signal:opts.signal} : undefined);
         let text = "";
         stream.on("text", delta => { text += delta; if(opts.onText) opts.onText({text, delta}); });
         const msg = await stream.finalMessage();
