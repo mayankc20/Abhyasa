@@ -780,7 +780,8 @@ $("logBtn").onclick = async () => {
   $("logBtn").disabled = true; $("logStatus").textContent = "Making your notes…";
   try{
     let p = null; try{ p = await askJSON(LOG_INSTR.replace("TODAY",todayStr()), text); }catch(e){}
-    if(!p || typeof p!=="object") p = localParse(text);
+    const viaClaude = !!(p && typeof p==="object");
+    if(!viaClaude) p = localParse(text);
     const id = uid();
     const entry = {kind:"entry", id, createdAt:Date.now(), text,
       date: /^\d{4}-\d{2}-\d{2}$/.test(p.date||"") ? p.date : todayStr(), mood: p.mood ?? null,
@@ -789,7 +790,7 @@ $("logBtn").onclick = async () => {
       private: $("privChk").checked || (p.items||[]).some(i=>i.category==="private")};
     await saveDoc("e_"+id, entry);
     const n = entry.notes.reduce((a,x)=>a+(x.points||[]).length,0);
-    $("logStatus").textContent = "Logged. Hare Krishna!"+(n?" Made "+n+" teaching note"+(n===1?"":"s")+", see the Notes tab.":"");
+    $("logStatus").textContent = !viaClaude ? "Saved as you said it. To have Claude turn it into a sadhana card and notes, add an API key in Settings (gear, top right), or use the claude.ai version." : "Logged. Hare Krishna!"+(n?" Made "+n+" teaching note"+(n===1?"":"s")+", see the Notes tab.":"");
     $("logInput").value = ""; $("privChk").checked = false;
   }catch(e){ $("logStatus").textContent = "Couldn't save that ("+(e.code||e.message)+"). Your text is still in the box."; }
   $("logBtn").disabled = false;
