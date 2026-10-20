@@ -480,6 +480,16 @@ select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:6px 
         <h2 id="jMoodH"><svg class="lotus"><use href="#i-lotus"/></svg>Mood, last 30 days</h2>
         <div class="chart" id="moodChart"></div>
       </section>
+      <section aria-labelledby="jReflectH">
+        <h2 id="jReflectH"><svg class="lotus"><use href="#i-lotus"/></svg>Reflect with Claude</h2>
+        <p class="hint" style="margin-top:0">Only when you tap Ask: your last 60 days of private entries, together with your sadhana numbers, are sent to Claude with your own key, just to answer that question. Otherwise your entries never leave this phone and stay locked.</p>
+        <div class="row">
+          <input type="text" id="jAskInput" style="flex:1" placeholder="Why do I feel low on days I miss mangala arati?">
+          <button class="primary" id="jAskBtn">Ask</button>
+        </div>
+        <div class="prompts" id="jAskPrompts"></div>
+        <div class="answer" id="jAnswer"></div>
+      </section>
       <section aria-labelledby="jListH">
         <div class="head"><h2 id="jListH"><svg class="lotus"><use href="#i-lotus"/></svg>Entries</h2><input type="text" id="jSearch" placeholder="Search" style="max-width:200px"></div>
         <div id="jList" class="library"></div>
@@ -1055,7 +1065,7 @@ async function open_(key, rec){
   const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv:unb64(rec.iv)}, key, unb64(rec.ct));
   return JSON.parse(new TextDecoder().decode(pt));
 }
-function lockJournal(){ jKey = null; jPlain = {}; clearTimeout(jLockTimer); renderJournal(); }
+function lockJournal(){ jKey = null; jPlain = {}; $("jAnswer").textContent = ""; $("jAskInput").value = ""; clearTimeout(jLockTimer); renderJournal(); }
 function touchJournal(){ clearTimeout(jLockTimer); if(jKey) jLockTimer = setTimeout(lockJournal, 5*60*1000); }
 ["input","click","keydown"].forEach(ev=>$("view-journal").addEventListener(ev, touchJournal));
 document.addEventListener("visibilitychange", ()=>{ if(document.hidden && jKey){ clearTimeout(jLockTimer); jLockTimer = setTimeout(lockJournal, 60*1000); } });
@@ -1093,6 +1103,27 @@ $("jSave").onclick = async () => {
   }catch(err){ $("jStatus").textContent = "Couldn't save ("+(err.code||err.message)+"). Your text is still in the box."; }
   $("jSave").disabled = false;
 };
+/* ---------- reflect on the private journal (sent only when asked) ---------- */
+const JASKS = ["What patterns do you see in my moods?","What is troubling me most lately?","How does my sadhana affect how I feel?","Give me advice for the coming week"];
+$("jAskPrompts").innerHTML = JASKS.map(q=>`<button type="button">${esc(q)}</button>`).join("");
+$("jAskPrompts").onclick = e => { if(e.target.tagName==="BUTTON"){ $("jAskInput").value = e.target.textContent; askPrivate(); } };
+$("jAskBtn").onclick = askPrivate;
+$("jAskInput").onkeydown = e => { if(e.key==="Enter") askPrivate(); };
+async function askPrivate(){
+  const q = $("jAskInput").value.trim(); if(!q || !jKey) return;
+  const sample = await claude.use("sample");
+  if(!sample){ $("jAnswer").textContent = "Add your Claude API key in Settings (gear, top right) to reflect with Claude."; return; }
+  const since = addDays(todayStr(),-60);
+  const priv = journal.filter(r=>r.date>=since).sort((a,b)=>a.createdAt-b.createdAt).map(r=>{ const p = jPlain[r.docId||("j_"+r.id)]||{}; return {date:r.date, mood:p.mood, feelings:p.feelings, text:p.text}; }).slice(-200);
+  const days = Array.from({length:60},(_,i)=>addDays(todayStr(),i-59)).map(d=>({date:d, ...dayTotals(d)})).filter(d=>d.count>0);
+  if(!priv.length){ $("jAnswer").textContent = "Write a few entries first, then ask."; return; }
+  $("jAnswer").textContent = "Reflecting…"; $("jAskBtn").disabled = true;
+  try{
+    await sample(`You are a wise, warm spiritual friend to an ISKCON devotee, reading their private diary with their permission. Answer from the entries and sadhana data below only. Notice patterns between mood, feelings and their sadhana (wake time, mangala arati, japa, reading, hearing, research). Be honest and specific, cite dates, and be gentle. Where it helps, offer practical advice in the spirit of Śrīla Prabhupāda's teachings, without preaching. If something sounds like a serious crisis, say kindly that talking to a trusted person or professional would help. Under 250 words, plain text.\n\nPrivate entries (JSON):\n${JSON.stringify(priv)}\n\nSadhana by day (times are minutes after midnight):\n${JSON.stringify(days)}\n\nQuestion: ${q}`,
+      {onText:u=>{ $("jAnswer").textContent = u.text; }, cache:false});
+  }catch(e){ $("jAnswer").textContent = e.code==="rate_limited" ? "Too many requests. Try again in a minute." : e.code==="not_granted" ? "Your Claude API key was rejected. Check it in Settings." : "Couldn't get an answer ("+e.code+")."; }
+  $("jAskBtn").disabled = false;
+}
 $("jSearch").oninput = () => renderJournalList();
 let jPending = new Set();
 $("jList").onclick = async ev => { const d = ev.target.dataset.jdel; if(!d) return;
