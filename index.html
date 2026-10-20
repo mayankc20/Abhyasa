@@ -241,6 +241,11 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
 .bhajan .prayer{background:var(--gold-soft);border-radius:14px;padding:12px 14px}
 .bhajan .prayer .head{display:flex;justify-content:space-between;align-items:center}
 .bhajan .prayer p{white-space:pre-line;margin:6px 0 0;font-family:var(--display);font-size:1.08rem;line-height:1.55}
+button.use{padding:2px 10px;font-size:.78rem;font-weight:600;border:none}
+button.use.u-useful{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+button.use.u-necessary{background:var(--accent-soft);color:var(--accent)}
+button.use.u-wasted{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+button.use.u-unclear{background:var(--line);color:var(--muted)}
 </style>
 </head>
 <body>
@@ -322,6 +327,7 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
       <div class="head"><h2 id="cardH"><svg class="lotus"><use href="#i-lotus"/></svg>Sadhana card</h2><span class="date" id="cardDate"></span></div>
       <div class="card" id="card"></div>
       <div class="panel" id="servicePanel"></div>
+      <div class="panel" id="screenPanel" hidden></div>
     </section>
 
     <section aria-labelledby="snipH">
@@ -773,6 +779,7 @@ Return JSON only, with these keys (omit what isn't said; never invent):
  "research":[{"topic":"...","minutes":n,"from":"HH:MM","to":"HH:MM","progress":"one line"}],
  "notes":[{"kind":"lecture"|"reading","source":"speaker and/or book, canto/chapter/verse","points":["3-6 faithful, self-contained teaching points in clear sentences, keep verse references and Sanskrit terms"],"quote":"a verse or line quoted verbatim, if dictated"}],
  "items":[{"category":"spiritual|service|research|productivity|thoughts|sleep|food|media|private","summary":"under 15 words, in their voice"}],
+ "screen":[{"app":"WhatsApp|YouTube|Instagram|other app name","minutes":n,"use":"useful|necessary|wasted|unclear"}] (phone screen time per app, only if they mention it; "use" only as they judge it, else "unclear"),
  "reflection":"2-3 warm sentences to them about this day: one thing that went well, one gentle suggestion",
  "tomorrow":[{"from":"HH:MM","to":"HH:MM","title":"short","quadrant":1-4}] (only if they say what they will do tomorrow)}
 The dictation may be rough, rambling and cover the whole day in any order: sort it all out. Food, sleep and YouTube or other media go in items (and media_minutes).
@@ -831,7 +838,7 @@ $("logBtn").onclick = async () => {
     const id = uid();
     const entry = {kind:"entry", id, createdAt:Date.now(), text,
       date: /^\d{4}-\d{2}-\d{2}$/.test(p.date||"") ? p.date : todayStr(), mood: p.mood ?? null,
-      metrics: p.metrics||{}, service: p.service||[], research: p.research||[], notes: p.notes||[],
+      metrics: p.metrics||{}, service: p.service||[], research: p.research||[], notes: p.notes||[], screen: Array.isArray(p.screen) ? p.screen.filter(x=>x && x.app) : [],
       items: (p.items||[]).filter(i=>CATS[i.category]),
       private: $("privChk").checked || (p.items||[]).some(i=>i.category==="private")};
     await saveDoc("e_"+id, entry);
@@ -924,6 +931,11 @@ function renderCard(){
     stat("i-book","Reading", fmtDur(t.reading), pill(t.reading?t.reading>=T.reading_min:null,"met","short"), "target "+T.reading_min+" min") +
     stat("i-hear","Hearing", fmtDur(t.hearing), pill(t.hearing?t.hearing>=T.hearing_min:null,"met","short"), "target "+T.hearing_min+" min") +
     stat("i-research","Research", fmtDur(t.research), "", "week "+(weekTotals().research/60).toFixed(1)+" / "+T.research_hours+" h");
+  const scr = data().entries.filter(e=>e.date===d && Array.isArray(e.screen)).flatMap(e=>e.screen.map((x,i)=>({...x, key:(e.docId||"e_"+e.id)+"|"+i})));
+  $("screenPanel").hidden = !scr.length;
+  if(scr.length){ const tot = u => scr.filter(x=>u.includes(x.use||"unclear")).reduce((a,x)=>a+(+x.minutes||0),0);
+    $("screenPanel").innerHTML = `<div class="head"><span class="label">Screen time today</span><span class="hint">${fmtDur(tot(["useful","necessary"]))} useful · ${fmtDur(tot(["wasted"]))} wasted</span></div><div class="servicelist">`+
+      scr.map(x=>`<div><span class="tm">${fmtDur(+x.minutes||0)}</span><span style="flex:1">${esc(x.app||"Phone")}</span><button class="use u-${esc(x.use||"unclear")}" data-sc="${esc(x.key)}">${esc(x.use||"unclear")}</button></div>`).join("")+`</div><div class="hint">Tap the label to mark it useful, necessary or wasted.</div>`; }
   const sv = t.service.slice().sort((a,b)=>(toMin(a.from)||0)-(toMin(b.from)||0));
   $("servicePanel").innerHTML = `<span class="label">Service today</span>` + (sv.length ? `<div class="servicelist">${sv.map(s=>`<div><span class="tm">${esc(s.from||"")}${s.to?"–"+esc(s.to):""}</span><span>${esc(s.what)}</span></div>`).join("")}</div>` : `<div class="empty">No service logged yet. Say something like "Seva in the kitchen from 9 to 10:30".</div>`);
 }
@@ -1081,6 +1093,10 @@ $("timeline").onclick = async ev => {
     pendingDelete.delete(d); try{ await deleteDoc(d); }catch(e){ $("logStatus").textContent = "Couldn't delete that entry."; } }
 };
 
+$("screenPanel").onclick = async e => { const k = e.target.dataset.sc; if(!k || usingExample) return;
+  const [docId, i] = k.split("|"), ent = data().entries.find(x=>(x.docId||"e_"+x.id)===docId); if(!ent) return;
+  const order = ["unclear","useful","necessary","wasted"], screen = ent.screen.map((x,j)=>j===+i ? {...x, use:order[(order.indexOf(x.use||"unclear")+1)%order.length]} : x);
+  const {docId:_, ...rest} = ent; try{ await saveDoc(docId, {...rest, screen}); }catch(err){} };
 /* ---------- weekly report for mentors (never includes private items) ---------- */
 let repWhich = "last";
 const repRange = () => { const ws = weekStart(todayStr()); return repWhich==="last" ? [addDays(ws,-7), addDays(ws,-1)] : [ws, todayStr()]; };
@@ -1101,6 +1117,7 @@ $("repMake").onclick = async () => {
       sleep: es.map(e=>e.metrics||{}).filter(m=>m.bed_time||m.sleep_hours).map(m=>({bed:m.bed_time, hours:m.sleep_hours}))[0]||null,
       service: es.flatMap(e=>e.service||[]), research: es.flatMap(e=>e.research||[]).map(r=>({topic:r.topic, minutes:r.minutes, progress:r.progress})),
       heard_read: es.flatMap(e=>e.notes||[]).map(n=>({kind:n.kind, source:n.source, points:n.points})),
+      screen: es.flatMap(e=>e.screen||[]).map(x=>({app:x.app, minutes:x.minutes, use:x.use||"unclear"})),
       other: es.flatMap(e=>(e.items||[]).filter(i=>["food","sleep","media","productivity"].includes(i.category)).map(i=>i.category+": "+i.summary)),
       plan: pl ? {blocks:pl.blocks.length, done:pl.blocks.filter(x=>x.done).length} : null});
   }
@@ -1110,7 +1127,7 @@ $("repMake").onclick = async () => {
     const r = await sample(`Write a weekly sadhana report that an ISKCON devotee will send to their mentors (siksa/diksa guru or counsellor). Week: ${a} to ${b}. Times in the data are minutes after midnight; convert them to clock times.
 Weekly targets: ${JSON.stringify(tg())}
 Daily data (JSON): ${JSON.stringify(days)}
-Format: plain text for a phone message, no markdown symbols. Start with "Hare Krishna. Please accept my humble obeisances. All glories to Śrīla Prabhupāda." and a one-line summary. Then short sections with plain headings on their own line: Sadhana (wake-up, mangala arati days out of 7, 16 rounds and by when, compared with targets), Hearing and reading (sources and 2-3 key realisations), Service, Research and studies (hours and progress), Daily habits (sleep, food, screen time and YouTube), Plan follow-through, Areas to improve, and Resolutions for next week. Be honest and factual, humble, never boastful; say "not recorded" where data is missing; do not invent anything. End with "Your servant," on its own line. Under 350 words.`, {modelTier:"default"});
+Format: plain text for a phone message, no markdown symbols. Start with "Hare Krishna. Please accept my humble obeisances. All glories to Śrīla Prabhupāda." and a one-line summary. Then short sections with plain headings on their own line: Sadhana (wake-up, mangala arati days out of 7, 16 rounds and by when, compared with targets), Hearing and reading (sources and 2-3 key realisations), Service, Research and studies (hours and progress), Daily habits (sleep, food, and screen time per app such as WhatsApp and YouTube, split into useful or necessary versus wasted as they marked it), Plan follow-through, Areas to improve, and Resolutions for next week. Be honest and factual, humble, never boastful; say "not recorded" where data is missing; do not invent anything. End with "Your servant," on its own line. Under 350 words.`, {modelTier:"default"});
     const text = (r.text||"").trim();
     await saveDoc("report_"+a, {kind:"report", start:a, end:b, text, createdAt:Date.now()});
     reports[a] = {start:a, text, createdAt:Date.now()}; showReport();
