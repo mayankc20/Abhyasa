@@ -234,6 +234,12 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
 .panel,.stat,.snip{box-shadow:0 8px 24px -18px color-mix(in srgb,var(--saffron) 60%,transparent)}
 .mantra{color:color-mix(in srgb,var(--gold) 75%,var(--saffron))}
 .jedit{display:flex;flex-direction:column;gap:10px}
+.bhajan .bh{border-left:4px solid var(--gold);padding:4px 0 4px 12px;margin-bottom:12px}
+.bhajan .bt{font-family:var(--display);font-weight:700;font-size:1.2rem}
+.bhajan .bh p{margin:4px 0 6px}
+.bhajan a{color:var(--accent);font-weight:600;text-decoration:none}
+.bhajan .prayer{background:var(--gold-soft);border-radius:14px;padding:12px 14px}
+.bhajan .prayer p{white-space:pre-line;margin:6px 0 0;font-family:var(--display);font-size:1.08rem;line-height:1.55}
 </style>
 </head>
 <body>
@@ -473,6 +479,10 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
       <div class="hint" id="unlockStatus" role="status"></div>
     </section>
     <div id="jOpen" class="view" hidden>
+      <section class="panel bhajan" aria-labelledby="jBhH">
+        <div class="head"><h2 id="jBhH"><svg class="lotus"><use href="#i-lotus"/></svg>Today’s bhajan &amp; prayer</h2><button class="link" id="jBhAgain">Another</button></div>
+        <div id="jBhOut" class="hint">Chosen from your last journal entries, when you open the journal.</div>
+      </section>
       <section class="panel" aria-labelledby="jWriteH">
         <div class="head"><h2 id="jWriteH"><svg class="lotus"><use href="#i-lotus"/></svg>Dear Śrīla Prabhupāda</h2><span class="row"><button class="link" id="pwChangeBtn">Change password</button><button class="link" id="lockBtn">Lock now</button></span></div>
         <form id="pwChangeForm" class="lockform" hidden>
@@ -1118,7 +1128,7 @@ async function vaultRaw(pw, v){
   return unb64((await open_(kek, v.wrapped)).k).buffer;
 }
 async function vaultKey(pw, v){ return importKey(await vaultRaw(pw, v)); }
-function lockJournal(){ jEditing = null; jKey = null; jPlain = {}; $("jAnswer").textContent = ""; $("jAskInput").value = ""; clearTimeout(jLockTimer); renderJournal(); }
+function lockJournal(){ jEditing = null; $("jBhOut").className = "hint"; $("jBhOut").textContent = ""; jKey = null; jPlain = {}; $("jAnswer").textContent = ""; $("jAskInput").value = ""; clearTimeout(jLockTimer); renderJournal(); }
 function touchJournal(){ clearTimeout(jLockTimer); if(jKey) jLockTimer = setTimeout(lockJournal, 5*60*1000); }
 ["input","click","keydown"].forEach(ev=>$("view-journal").addEventListener(ev, touchJournal));
 document.addEventListener("visibilitychange", ()=>{ if(document.hidden && jKey){ clearTimeout(jLockTimer); jLockTimer = setTimeout(lockJournal, 60*1000); } });
@@ -1198,6 +1208,65 @@ $("jSave").onclick = async () => {
   }catch(err){ $("jStatus").textContent = "Couldn't save ("+(err.code||err.message)+"). Your text is still in the box."; }
   $("jSave").disabled = false;
 };
+/* ---------- bhajan and prayer from last night's mood ---------- */
+const BHAJANS = [
+ ["Śrī Guru-caraṇa-padma","Narottama dāsa Ṭhākura","taking shelter of the spiritual master, guidance"],
+ ["Saṁsāra-dāvānala (Gurvaṣṭakam)","Viśvanātha Cakravartī Ṭhākura","morning, gratitude to the guru"],
+ ["Namas te narasiṁhāya (Nṛsiṁha praṇāma)","traditional","fear, obstacles, needing protection"],
+ ["Gopīnātha, mama nivedana śuno","Bhaktivinoda Ṭhākura","restless mind, helplessness, feeling fallen"],
+ ["Amāra jīvana sadā pāpe rata","Bhaktivinoda Ṭhākura","seeing one's own faults, humility"],
+ ["Mānasa, deha, geha","Bhaktivinoda Ṭhākura","full surrender, letting go of anxiety"],
+ ["Kabe ha'be bolo se-dina āmāra","Bhaktivinoda Ṭhākura","longing for humility and pure chanting"],
+ ["Śuddha-bhakata-caraṇa-reṇu","Bhaktivinoda Ṭhākura","joy in sadhana and devotee association"],
+ ["Ohe! Vaiṣṇava Ṭhākura","Bhaktivinoda Ṭhākura","pride, begging mercy of devotees"],
+ ["Jīv jāgo, jīv jāgo","Bhaktivinoda Ṭhākura","laziness, waking up spiritually"],
+ ["Udilo aruṇa","Bhaktivinoda Ṭhākura","early morning, rising for sadhana"],
+ ["Vibhāvarī śeṣa","Bhaktivinoda Ṭhākura","morning, glories of the holy names"],
+ ["Durlabha mānava-janma","Bhaktivinoda Ṭhākura","wasted time, urgency in spiritual life"],
+ ["Bhajahū re mana","Govinda dāsa Kavirāja","distraction by the world, fixing the mind"],
+ ["Hari hari! biphale","Narottama dāsa Ṭhākura","regret, feeling one has missed devotion"],
+ ["Gaurāṅga bolite habe","Narottama dāsa Ṭhākura","longing for deeper devotion"],
+ ["Ye ānilo prema-dhana","Narottama dāsa Ṭhākura","missing devotees, separation"],
+ ["Śrī Kṛṣṇa-caitanya prabhu dayā koro more","Narottama dāsa Ṭhākura","begging for mercy"],
+ ["Nitāi-pada-kamala","Narottama dāsa Ṭhākura","shelter of Nityānanda, discouragement"],
+ ["Parama karuṇa","Locana dāsa Ṭhākura","the easy mercy of Gaura-Nitai, hope"],
+ ["Akrodha paramānanda","Locana dāsa Ṭhākura","anger, Nityānanda's compassion"],
+ ["Jaya Rādhā-Mādhava","Bhaktivinoda Ṭhākura","joy, remembering Vṛndāvana"],
+ ["Śikṣāṣṭakam","Śrī Caitanya Mahāprabhu","chanting, humility and tolerance"],
+ ["Dāmodarāṣṭakam","Satyavrata Muni","Kārtika month, love for little Kṛṣṇa"],
+ ["Śrī Nāma (gāy gorā madhur sware)","Bhaktivinoda Ṭhākura","joy of the holy names, enthusiasm"],
+ ["Namo namaḥ tulasī","traditional","tulasī worship, devotion"]
+];
+let jBhDay = null, jBhCache = null;
+const yt = q => "https://www.youtube.com/results?search_query="+encodeURIComponent(q);
+const lyr = q => "https://www.google.com/search?q="+encodeURIComponent(q+" lyrics kksongs");
+async function suggestBhajan(force){
+  if(!jKey) return;
+  if(!force && jBhDay===todayStr()){ if(jBhCache){ $("jBhOut").className = ""; $("jBhOut").innerHTML = jBhCache; } return; }
+  const sample = await claude.use("sample");
+  if(!sample){ $("jBhOut").textContent = "Suggestions need Claude, which isn't available here."; return; }
+  const since = addDays(todayStr(),-2);
+  const recent = journal.filter(r=>r.date>=since).sort((a,b)=>a.createdAt-b.createdAt).map(r=>{ const p = jPlain[r.docId||("j_"+r.id)]||{}; return {date:r.date, mood:p.mood, feelings:p.feelings, text:p.text}; }).slice(-6);
+  if(!recent.length){ $("jBhOut").textContent = "Write tonight's letter, and tomorrow a bhajan and prayer chosen for you will be here."; return; }
+  jBhDay = todayStr(); $("jBhAgain").disabled = true; $("jBhOut").textContent = "Choosing a bhajan for you…";
+  try{
+    const r = await sample.json(`You are a gentle Vaishnava friend to an ISKCON devotee. From their most recent private letters to Śrīla Prabhupāda (below), sense their situation and mood, then choose 1 or 2 bhajans ONLY from this list (use the index), and write a short prayer they can say today.
+Bhajans (index: title, author, fits): ${BHAJANS.map((b,i)=>i+": "+b.join(" — ")).join("; ")}
+${force ? "Pick something different from the most obvious choice." : ""}
+Return JSON only: {"mood":"one short line naming how they seem","bhajans":[{"i":index,"why":"one sentence linking it to their situation"}],"prayer":"4-7 lines in simple English, first person, addressed to Kṛṣṇa, Śrīla Prabhupāda or Śrī Caitanya as fits, specific to their situation, humble and hopeful, no preaching"}
+
+Recent letters (JSON):
+${JSON.stringify(recent)}`, {modelTier:"quick"});
+    const picks = (r.bhajans||[]).filter(b=>BHAJANS[+b.i]).slice(0,2);
+    $("jBhOut").className = "";
+    $("jBhOut").innerHTML = (r.mood?`<p class="hint" style="margin:0 0 10px">${esc(r.mood)}</p>`:"") + picks.map(b=>{ const [t,a] = BHAJANS[+b.i];
+      return `<div class="bh"><div class="bt">${esc(t)}</div><div class="hint">${esc(a)}</div><p>${esc(b.why||"")}</p><div class="row"><a href="${yt(t+" "+a+" bhajan")}" target="_blank" rel="noopener">Listen</a><a href="${lyr(t)}" target="_blank" rel="noopener">Lyrics</a></div></div>`; }).join("")
+      + (r.prayer?`<div class="prayer"><div class="label">A prayer for today</div><p>${esc(r.prayer)}</p></div>`:"");
+    jBhCache = $("jBhOut").innerHTML;
+  }catch(e){ jBhDay = null; $("jBhOut").className = "hint"; $("jBhOut").textContent = "Couldn't choose a bhajan just now ("+(e.code||e.message)+"). Tap Another to try again."; }
+  $("jBhAgain").disabled = false;
+}
+$("jBhAgain").onclick = () => suggestBhajan(true);
 /* ---------- reflect on the private journal (sent only when asked) ---------- */
 const JASKS = ["What patterns do you see in my moods?","What is troubling me most lately?","How does my sadhana affect how I feel?","Give me advice for the coming week"];
 $("jAskPrompts").innerHTML = JASKS.map(q=>`<button type="button">${esc(q)}</button>`).join("");
@@ -1261,7 +1330,7 @@ async function renderJournal(){
   $("jSetup").hidden = view!=="setup"; $("jLocked").hidden = view!=="locked"; $("jOpen").hidden = view!=="open";
   if(view!=="open") return;
   for(const r of journal){ const k = r.docId||("j_"+r.id); if(jPlain[k]) continue; try{ jPlain[k] = await open_(jKey, r); }catch(e){ jPlain[k] = {text:"(This entry couldn't be opened.)", mood:null, feelings:[]}; } }
-  renderJournalList(); renderMood();
+  renderJournalList(); renderMood(); suggestBhajan(false);
 }
 function renderJournalList(){
   const keep = jEditing && $("jEditText") ? {t:$("jEditText").value, a:$("jEditAsk").value} : null;
