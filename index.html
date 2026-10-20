@@ -233,6 +233,7 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
 .tabs button[aria-selected="true"]{background:linear-gradient(135deg,var(--saffron-soft),var(--accent-soft))}
 .panel,.stat,.snip{box-shadow:0 8px 24px -18px color-mix(in srgb,var(--saffron) 60%,transparent)}
 .mantra{color:color-mix(in srgb,var(--gold) 75%,var(--saffron))}
+.jedit{display:flex;flex-direction:column;gap:10px}
 </style>
 </head>
 <body>
@@ -473,7 +474,7 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
     </section>
     <div id="jOpen" class="view" hidden>
       <section class="panel" aria-labelledby="jWriteH">
-        <div class="head"><h2 id="jWriteH"><svg class="lotus"><use href="#i-lotus"/></svg>Dear diary</h2><span class="row"><button class="link" id="pwChangeBtn">Change password</button><button class="link" id="lockBtn">Lock now</button></span></div>
+        <div class="head"><h2 id="jWriteH"><svg class="lotus"><use href="#i-lotus"/></svg>Dear Śrīla Prabhupāda</h2><span class="row"><button class="link" id="pwChangeBtn">Change password</button><button class="link" id="lockBtn">Lock now</button></span></div>
         <form id="pwChangeForm" class="lockform" hidden>
           <input type="password" id="pwOld" placeholder="Current password" autocomplete="current-password">
           <input type="password" id="pwNew1" placeholder="New password (8+ characters)" autocomplete="new-password">
@@ -481,7 +482,7 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
           <div class="row"><button class="primary" type="submit">Change password</button><button type="button" class="link" id="pwCancel">Cancel</button></div>
           <div class="hint" id="pwChangeStatus" role="status"></div>
         </form>
-        <textarea id="jInput" style="min-height:160px" placeholder="How was today, really? What did you feel, what stayed with you, what do you want to say that no one else will hear…"></textarea>
+        <textarea id="jInput" style="min-height:160px" placeholder="Speak to Śrīla Prabhupāda about your day, in Hindi, English or both: your sadhana, what you heard, your service, your struggles and feelings. Claude writes it up as a letter to him."></textarea>
         <div class="moodrow">
           <label for="moodIn" class="label">Mood</label>
           <input type="range" id="moodIn" min="1" max="10" value="6">
@@ -491,7 +492,7 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
         <div class="row">
           <button class="mic" id="jMic" aria-label="Dictate"><svg width="18" height="18"><use href="#i-mic"/></svg></button>
           <button class="primary" id="jSave">Save privately</button>
-          <label class="row hint"><input type="checkbox" id="jTidy" checked> Claude writes it up</label>
+          <label class="row hint"><input type="checkbox" id="jTidy" checked> Write it as a letter</label>
         </div>
         <div class="hint" id="jStatus" role="status">Locks itself after 5 minutes without activity.</div>
       </section>
@@ -1117,7 +1118,7 @@ async function vaultRaw(pw, v){
   return unb64((await open_(kek, v.wrapped)).k).buffer;
 }
 async function vaultKey(pw, v){ return importKey(await vaultRaw(pw, v)); }
-function lockJournal(){ jKey = null; jPlain = {}; $("jAnswer").textContent = ""; $("jAskInput").value = ""; clearTimeout(jLockTimer); renderJournal(); }
+function lockJournal(){ jEditing = null; jKey = null; jPlain = {}; $("jAnswer").textContent = ""; $("jAskInput").value = ""; clearTimeout(jLockTimer); renderJournal(); }
 function touchJournal(){ clearTimeout(jLockTimer); if(jKey) jLockTimer = setTimeout(lockJournal, 5*60*1000); }
 ["input","click","keydown"].forEach(ev=>$("view-journal").addEventListener(ev, touchJournal));
 document.addEventListener("visibilitychange", ()=>{ if(document.hidden && jKey){ clearTimeout(jLockTimer); jLockTimer = setTimeout(lockJournal, 60*1000); } });
@@ -1148,7 +1149,9 @@ try{ const t = localStorage.getItem("abhyasa.jtidy"); if(t!=null) $("jTidy").che
 $("jTidy").onchange = () => { try{ localStorage.setItem("abhyasa.jtidy", $("jTidy").checked?"1":"0"); }catch(e){} };
 async function tidyJournal(text){
   const sample = await claude.use("sample"); if(!sample) return null;
-  return sample.json(`You help a devotee keep a private diary. Rewrite their rough, dictated entry as a clear, flowing diary entry in the first person, in their own voice and language. Keep every fact, feeling and name they said; fix dictation errors (Sanskrit and ISKCON terms like mangala arati, japa, prabhu, seva); add nothing they didn't say and give no advice. Use short paragraphs. They often speak a mix of Hindi and English: keep that natural Hinglish flavour in Roman script, but make it read smoothly.
+  return sample.json(`You help a devotee keep a private diary, written as a daily letter to Śrīla Prabhupāda. Turn their rough, dictated entry (often a mix of Hindi and English, with voice-typing errors) into a heartfelt letter in clear, simple English, in the first person and in their own voice.
+Begin with "Dear Śrīla Prabhupāda," on its own line, then "Please accept my humble obeisances. All glories to Your Divine Grace." Then tell him about the day in short paragraphs, in the order that makes sense: sadhana, what they heard and read, service, study and research, struggles and feelings, and any prayer or resolution they expressed. End with "Your servant," on its own line.
+Keep every fact, feeling and name they said, translate Hindi faithfully, fix dictation errors (Sanskrit and ISKCON terms like mangala arati, japa, prabhu, seva); add nothing they didn't say, give no advice and don't flatter.
 Also pick the feelings that fit from: ${FEELINGS.join(", ")}, and a mood from 1 (very low) to 10 (wonderful).
 Return JSON only: {"text":"...","feelings":["..."],"mood":n}
 
@@ -1218,7 +1221,39 @@ async function askPrivate(){
 }
 $("jSearch").oninput = () => renderJournalList();
 let jPending = new Set();
-$("jList").onclick = async ev => { const d = ev.target.dataset.jdel; if(!d) return;
+let jEditing = null;
+async function reviseJournal(text, ask){
+  const sample = await claude.use("sample"); if(!sample) return null;
+  const r = await sample(`Here is a private diary entry, written as a letter to Śrīla Prabhupāda. Make only the change the writer asks for (it may be in Hindi, English or a mix), keep everything else exactly as it is, and keep the letter's opening and closing. Reply with the full revised letter only, no commentary.
+
+Change requested: ${ask}
+
+Letter:
+${text}`, {modelTier:"quick"});
+  return (r.text||"").trim();
+}
+$("jList").onclick = async ev => {
+  const ed = ev.target.dataset.jedit;
+  if(ed){ jEditing = ed; renderJournalList(); $("jEditText")?.focus(); return; }
+  if(ev.target.id==="jEditCancel"){ jEditing = null; renderJournalList(); return; }
+  if(ev.target.id==="jEditApply"){
+    const ask = $("jEditAsk").value.trim(); if(!ask){ $("jEditAsk").focus(); return; }
+    ev.target.disabled = true; $("jEditStatus").textContent = "Claude is making the change…";
+    try{ const t = await reviseJournal($("jEditText").value, ask);
+      if(t){ $("jEditText").value = t; $("jEditAsk").value = ""; $("jEditStatus").textContent = "Changed. Check it, then tap Save changes."; }
+      else $("jEditStatus").textContent = "Claude couldn't be reached here. You can still edit the text yourself."; }
+    catch(e){ $("jEditStatus").textContent = "Couldn't make that change ("+(e.code||e.message)+")."; }
+    ev.target.disabled = false; return; }
+  if(ev.target.id==="jEditSave"){
+    const k = jEditing, rec = journal.find(r=>(r.docId||"j_"+r.id)===k), text = $("jEditText").value.trim();
+    if(!rec || !text || !jKey) return;
+    ev.target.disabled = true;
+    try{ const body = {...(jPlain[k]||{}), text};
+      await saveDoc(k, {kind:"journal", id:rec.id, date:rec.date, createdAt:rec.createdAt, editedAt:Date.now(), ...(await seal(jKey, body))});
+      jPlain[k] = body; jEditing = null; renderJournalList(); $("jStatus").textContent = "Changes saved and locked."; }
+    catch(e){ $("jEditStatus").textContent = "Couldn't save ("+(e.code||e.message)+")."; ev.target.disabled = false; }
+    return; }
+  const d = ev.target.dataset.jdel; if(!d) return;
   if(!jPending.has(d)){ jPending.add(d); ev.target.textContent = "Tap again to delete"; return; }
   jPending.delete(d); try{ await deleteDoc(d); }catch(e){} };
 async function renderJournal(){
@@ -1229,10 +1264,16 @@ async function renderJournal(){
   renderJournalList(); renderMood();
 }
 function renderJournalList(){
+  const keep = jEditing && $("jEditText") ? {t:$("jEditText").value, a:$("jEditAsk").value} : null;
   const q = ($("jSearch").value||"").toLowerCase().trim();
   const rows = journal.slice().sort((a,b)=>b.createdAt-a.createdAt).map(r=>({r, p:jPlain[r.docId||("j_"+r.id)]})).filter(x=>x.p && (!q || (x.p.text+" "+(x.p.feelings||[]).join(" ")).toLowerCase().includes(q)));
-  $("jList").innerHTML = rows.length ? rows.slice(0,100).map(({r,p})=>`<article class="jentry"><div class="meta"><span>${dayLabel(r.date)} · ${new Date(r.createdAt).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}${p.mood!=null?" · mood "+p.mood+"/10":""}</span><button class="link" data-jdel="${esc(r.docId||"j_"+r.id)}">Delete</button></div>${(p.feelings||[]).length?`<div class="tags">${p.feelings.map(f=>`<span>${esc(f)}</span>`).join("")}</div>`:""}<div class="txt">${esc(p.text)}</div>${p.original?`<details class="orig"><summary>What I said</summary><div class="txt">${esc(p.original)}</div></details>`:""}</article>`).join("")
+  $("jList").innerHTML = rows.length ? rows.slice(0,100).map(({r,p})=>`<article class="jentry"><div class="meta"><span>${dayLabel(r.date)} · ${new Date(r.createdAt).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}${p.mood!=null?" · mood "+p.mood+"/10":""}</span><span class="row" style="gap:14px"><button class="link" data-jedit="${esc(r.docId||"j_"+r.id)}">Edit</button><button class="link" data-jdel="${esc(r.docId||"j_"+r.id)}">Delete</button></span></div>${(p.feelings||[]).length?`<div class="tags">${p.feelings.map(f=>`<span>${esc(f)}</span>`).join("")}</div>`:""}${jEditing===(r.docId||"j_"+r.id) ? `<div class="jedit"><textarea id="jEditText" style="min-height:220px">${esc(p.text)}</textarea>
+<div class="hint">Fix it yourself above (the keyboard mic works here too), or tell Claude what to change:</div>
+<div class="row"><input type="text" id="jEditAsk" style="flex:1" placeholder="e.g. the exam is on Friday, not Thursday"><button id="jEditApply">Change</button></div>
+<div class="row"><button class="primary" id="jEditSave">Save changes</button><button class="link" id="jEditCancel">Cancel</button></div>
+<div class="hint" id="jEditStatus" role="status"></div></div>` : `<div class="txt">${esc(p.text)}</div>`}${p.original?`<details class="orig"><summary>What I said</summary><div class="txt">${esc(p.original)}</div></details>`:""}</article>`).join("")
     : `<div class="empty">${q?"No entries match.":"Nothing written yet. Whatever you write here stays between you and your password."}</div>`;
+  if(keep && $("jEditText")){ $("jEditText").value = keep.t; $("jEditAsk").value = keep.a; }
 }
 function renderMood(){
   const days = Array.from({length:30},(_,i)=>addDays(todayStr(),i-29));
