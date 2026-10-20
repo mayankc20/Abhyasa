@@ -383,6 +383,13 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
       <h2 id="trendH"><svg class="lotus"><use href="#i-lotus"/></svg>Last 14 days</h2>
       <div class="charts" id="charts"></div>
     </section>
+    <section class="panel" aria-labelledby="repH">
+      <h2 id="repH"><svg class="lotus"><use href="#i-lotus"/></svg>Weekly report for mentors</h2>
+      <p class="hint" style="margin:0">Made from your daily logs and plans: sadhana, hearing and reading, service, research, sleep, food and screen time. Your private journal and anything you marked Private are never included.</p>
+      <div class="row"><div class="seg"><button id="repLast" aria-pressed="true">Last week</button><button id="repThis" aria-pressed="false">This week so far</button></div><button class="primary" id="repMake">Make report</button></div>
+      <div class="answer" id="repOut" style="white-space:pre-wrap"></div>
+      <div class="row" id="repTools" hidden><button id="repShare">Share</button><button id="repCopy">Copy</button><button id="repDl">Download</button><span class="hint" id="repStatus"></span></div>
+    </section>
   </div>
 
   <!-- NOTES -->
@@ -648,13 +655,14 @@ function exampleData(){
 }
 
 /* ---------- storage: private rows under your account, with a browser fallback ---------- */
-let jbh = {}, entries = [], plans = {}, targets = null, photos = null, vault = null, journal = [], gitaDoc = null, usingExample = false, coll = null;
+let reports = {}, jbh = {}, entries = [], plans = {}, targets = null, photos = null, vault = null, journal = [], gitaDoc = null, usingExample = false, coll = null;
 const LS = "daybook.v2";
-const allDocs = () => [...entries, ...Object.values(plans), ...(targets?[targets]:[]), ...(photos?[photos]:[]), ...(vault?[vault]:[]), ...(gitaDoc?[gitaDoc]:[]), ...journal, ...Object.values(jbh)];
+const allDocs = () => [...entries, ...Object.values(plans), ...(targets?[targets]:[]), ...(photos?[photos]:[]), ...(vault?[vault]:[]), ...(gitaDoc?[gitaDoc]:[]), ...journal, ...Object.values(jbh), ...Object.values(reports)];
 function lsWrite(){ try{ localStorage.setItem(LS, JSON.stringify(allDocs())); }catch(e){} }
 function lsRead(){ try{ return JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ return []; } }
 function ingest(docs){
-  entries = []; plans = {}; targets = null; photos = null; vault = null; journal = []; gitaDoc = null; jbh = {};
+  setTimeout(()=>{ try{ showReport(); }catch(e){} });
+  reports = {}; entries = []; plans = {}; targets = null; photos = null; vault = null; journal = []; gitaDoc = null; jbh = {};
   docs.forEach(d=>{
     if(d.kind==="plan") plans[d.date] = d;
     else if(d.kind==="targets") targets = d;
@@ -663,6 +671,7 @@ function ingest(docs){
     else if(d.kind==="gita") gitaDoc = d;
     else if(d.kind==="journal") journal.push(d);
     else if(d.kind==="jbhajan") jbh[d.date] = d;
+    else if(d.kind==="report") reports[d.start] = d;
     else entries.push(d);
   });
   entries.sort((a,b)=>b.createdAt-a.createdAt);
@@ -1071,6 +1080,51 @@ $("timeline").onclick = async ev => {
   if(d){ if(!pendingDelete.has(d)){ pendingDelete.add(d); ev.target.textContent = "Tap again to delete"; return; }
     pendingDelete.delete(d); try{ await deleteDoc(d); }catch(e){ $("logStatus").textContent = "Couldn't delete that entry."; } }
 };
+
+/* ---------- weekly report for mentors (never includes private items) ---------- */
+let repWhich = "last";
+const repRange = () => { const ws = weekStart(todayStr()); return repWhich==="last" ? [addDays(ws,-7), addDays(ws,-1)] : [ws, todayStr()]; };
+function showReport(){
+  $("repLast").setAttribute("aria-pressed", repWhich==="last"); $("repThis").setAttribute("aria-pressed", repWhich!=="last");
+  const [a] = repRange(), r = reports[a];
+  $("repOut").textContent = r ? r.text : ""; $("repTools").hidden = !r; $("repStatus").textContent = r ? "Made "+new Date(r.createdAt).toLocaleDateString(undefined,{day:"numeric",month:"short"}) : "";
+}
+$("repLast").onclick = () => { repWhich = "last"; showReport(); };
+$("repThis").onclick = () => { repWhich = "this"; showReport(); };
+$("repMake").onclick = async () => {
+  const sample = await claude.use("sample");
+  if(!sample){ $("repOut").textContent = "Reports need Claude, which isn't available here."; return; }
+  const [a,b] = repRange(), days = [];
+  for(let d = a; d <= b; d = addDays(d,1)){
+    const es = data().entries.filter(e=>e.date===d && !e.private), t = dayTotals(d), pl = data().plans[d];
+    days.push({date:d, wake:t.wake, mangala_arati:t.mangala, rounds:t.rounds, japa_done:t.japaDone, reading_min:t.reading, hearing_min:t.hearing, research_min:t.research, media_min:t.media,
+      sleep: es.map(e=>e.metrics||{}).filter(m=>m.bed_time||m.sleep_hours).map(m=>({bed:m.bed_time, hours:m.sleep_hours}))[0]||null,
+      service: es.flatMap(e=>e.service||[]), research: es.flatMap(e=>e.research||[]).map(r=>({topic:r.topic, minutes:r.minutes, progress:r.progress})),
+      heard_read: es.flatMap(e=>e.notes||[]).map(n=>({kind:n.kind, source:n.source, points:n.points})),
+      other: es.flatMap(e=>(e.items||[]).filter(i=>["food","sleep","media","productivity"].includes(i.category)).map(i=>i.category+": "+i.summary)),
+      plan: pl ? {blocks:pl.blocks.length, done:pl.blocks.filter(x=>x.done).length} : null});
+  }
+  if(!days.some(d=>d.wake!=null || d.research_min || d.reading_min || d.hearing_min || d.service.length)){ $("repOut").textContent = "There's nothing logged for "+(repWhich==="last"?"last week":"this week")+" yet."; return; }
+  $("repMake").disabled = true; $("repOut").textContent = "Writing your report…"; $("repTools").hidden = true;
+  try{
+    const r = await sample(`Write a weekly sadhana report that an ISKCON devotee will send to their mentors (siksa/diksa guru or counsellor). Week: ${a} to ${b}. Times in the data are minutes after midnight; convert them to clock times.
+Weekly targets: ${JSON.stringify(tg())}
+Daily data (JSON): ${JSON.stringify(days)}
+Format: plain text for a phone message, no markdown symbols. Start with "Hare Krishna. Please accept my humble obeisances. All glories to Śrīla Prabhupāda." and a one-line summary. Then short sections with plain headings on their own line: Sadhana (wake-up, mangala arati days out of 7, 16 rounds and by when, compared with targets), Hearing and reading (sources and 2-3 key realisations), Service, Research and studies (hours and progress), Daily habits (sleep, food, screen time and YouTube), Plan follow-through, Areas to improve, and Resolutions for next week. Be honest and factual, humble, never boastful; say "not recorded" where data is missing; do not invent anything. End with "Your servant," on its own line. Under 350 words.`, {modelTier:"default"});
+    const text = (r.text||"").trim();
+    await saveDoc("report_"+a, {kind:"report", start:a, end:b, text, createdAt:Date.now()});
+    reports[a] = {start:a, text, createdAt:Date.now()}; showReport();
+  }catch(e){ $("repOut").textContent = "Couldn't write the report ("+(e.code||e.message)+")."; }
+  $("repMake").disabled = false;
+};
+$("repShare").onclick = async () => { const t = $("repOut").textContent;
+  if(navigator.share){ try{ await navigator.share({title:"Weekly sadhana report", text:t}); return; }catch(e){ if(e.name==="AbortError") return; } }
+  $("repCopy").click(); };
+$("repCopy").onclick = async () => { const t = $("repOut").textContent;
+  try{ await navigator.clipboard.writeText(t); $("repStatus").textContent = "Copied. Paste it into WhatsApp or email."; }
+  catch(e){ const r = document.createRange(); r.selectNodeContents($("repOut")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); $("repStatus").textContent = "Selected. Use your phone's Copy."; } };
+$("repDl").onclick = async () => { const dl = await claude.use("downloads"); const [a] = repRange();
+  try{ await dl.save({filename:"sadhana-report-"+a+".txt", data:$("repOut").textContent}); }catch(e){ $("repStatus").textContent = "Couldn't download. Use Copy instead."; } };
 
 /* ---------- ask your journal ---------- */
 const ASKS = ["Summarise what I learned this week","How does my wake-up time affect my japa?","How much research did I do this month?","Which service did I do most?"];
