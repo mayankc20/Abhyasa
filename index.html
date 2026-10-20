@@ -224,49 +224,6 @@ select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:6px 
 .sheet h3{font-family:var(--display);font-size:1.25rem;margin:0}
 .sheet p{margin:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-
-/* calmer layout: larger type, more air, fewer things on screen at once */
-body{font-size:17px;line-height:1.6}
-.view{gap:36px}
-section{gap:14px}
-.panel{padding:20px;border-radius:20px;gap:14px}
-h2{font-size:1.75rem}
-h2 .lotus{width:24px;height:16px}
-.hint{font-size:.95rem;line-height:1.55}
-textarea,input[type=text]{font-size:1.05rem;padding:12px 14px;border-radius:14px}
-textarea{min-height:140px}
-button{padding:10px 18px}
-button.primary{font-size:1.05rem;padding:12px 24px}
-button.mic{width:56px;height:56px}
-button.mic svg{width:24px;height:24px}
-.link{font-size:.95rem}
-.hero{min-height:clamp(230px,48vw,340px)}
-.scene{min-height:clamp(130px,30vw,200px)}
-.stat{padding:16px;border-radius:18px}
-.stat .v{font-size:1.9rem}
-.stat .t{font-size:.88rem}
-.snip p{font-size:1.32rem}
-.block{font-size:1.02rem}
-details.ideas summary{cursor:pointer;color:var(--accent);font-size:.95rem;list-style:none}
-details.ideas summary::-webkit-details-marker{display:none}
-details.ideas[open] summary{margin-bottom:8px}
-.prompts button{font-size:.9rem;padding:6px 14px}
-.timeline-plan{display:flex;flex-direction:column;gap:8px}
-.tblock{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--qc);border-radius:14px;padding:12px 14px}
-.tblock .tm{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.95rem;white-space:nowrap}
-.tblock .ttl{font-size:1.05rem;min-width:0}
-.tblock .q{font-size:.78rem;color:var(--qc);font-weight:600;display:block}
-.tblock.done .ttl{text-decoration:line-through;color:var(--muted)}
-.tblock input{width:20px;height:20px;accent-color:var(--saffron);margin:0}
-.notesseg{align-self:flex-start}
-@media (max-width:720px){
-  .tabs{padding-top:8px}
-  .tabs button{font-size:.82rem;padding:8px 4px;gap:4px}
-  .tabs button svg{width:26px;height:26px}
-  .wrap{padding-bottom:130px}
-  .brand h1{font-size:2rem}
-  .brand .logo{width:40px;height:40px}
-}
 </style>
 </head>
 <body>
@@ -335,11 +292,11 @@ details.ideas[open] summary{margin-bottom:8px}
         <button class="primary" id="logBtn">Log it</button>
         <label class="row hint"><input type="checkbox" id="privChk"> Private</label>
       </div>
-      <details class="ideas"><summary>Ideas for what to say</summary><div class="prompts" id="logPrompts"></div></details>
+      <div class="prompts" id="logPrompts"></div>
       <div class="hint" id="logStatus" role="status">Tell your whole day roughly, in any order: sadhana, lectures, reading, service, research, food, sleep, YouTube, even tomorrow's plans. Claude sorts it all out.</div>
     </section>
 
-    <section aria-labelledby="tvH" id="todayVerse" hidden style="display:none!important">
+    <section aria-labelledby="tvH" id="todayVerse" hidden>
       <div class="head"><h2 id="tvH"><svg class="lotus"><use href="#i-lotus"/></svg>Today's verse</h2><button class="link" id="tvOpen">Practise in Gita</button></div>
       <button class="tverse" id="tvCard" type="button"></button>
     </section>
@@ -351,7 +308,7 @@ details.ideas[open] summary{margin-bottom:8px}
     </section>
 
     <section aria-labelledby="snipH">
-      <div class="head"><h2 id="snipH"><svg class="lotus"><use href="#i-lotus"/></svg>To re-relish</h2><button class="link" id="moreSnips">Another</button></div>
+      <div class="head"><h2 id="snipH"><svg class="lotus"><use href="#i-lotus"/></svg>To re-relish</h2><button class="link" id="moreSnips">Show others</button></div>
       <div class="snips" id="snips"></div>
     </section>
   </div>
@@ -366,7 +323,7 @@ details.ideas[open] summary{margin-bottom:8px}
         <button class="mic" id="planMic" aria-label="Dictate"><svg width="18" height="18"><use href="#i-mic"/></svg></button>
         <button class="primary" id="planBtn">Add to tomorrow's plan</button>
       </div>
-      <details class="ideas"><summary>Ideas for what to say</summary><div class="prompts" id="planPrompts"></div></details>
+      <div class="prompts" id="planPrompts"></div>
       <div class="hint" id="planStatus" role="status">Speak your rough plan for tomorrow in any order. Claude arranges an exact schedule around your sadhana and research.</div>
     </section>
     <section aria-labelledby="planH">
@@ -377,7 +334,6 @@ details.ideas[open] summary{margin-bottom:8px}
           <button id="planTomorrow" aria-pressed="false">Tomorrow</button>
         </div>
       </div>
-      <div class="seg" style="align-self:flex-start"><button id="pvTime" aria-pressed="true">By time</button><button id="pvQuad" aria-pressed="false">By quadrant</button></div>
       <div class="quads" id="quads"></div>
     </section>
     <section class="panel" aria-labelledby="sugH">
@@ -415,8 +371,7 @@ details.ideas[open] summary{margin-bottom:8px}
   <!-- NOTES -->
   <div class="view" id="view-notes" role="tabpanel" aria-labelledby="tab-notes" hidden>
     <div class="scene" style="--img:url('img/cowherd-lunch.jpg');--pos:50% 38%" role="img" aria-label="Krishna and the cowherd boys take their lunch"><p>Everything you heard and read, gathered in one place to relish again.</p></div>
-    <div class="seg notesseg" role="group" aria-label="Show"><button data-ns="lib" aria-pressed="true">Teachings</button><button data-ns="tl" aria-pressed="false">Daily log</button><button data-ns="ask" aria-pressed="false">Ask</button></div>
-    <section class="panel" aria-labelledby="askH" data-nsec="ask" hidden>
+    <section class="panel" aria-labelledby="askH">
       <h2 id="askH"><svg class="lotus"><use href="#i-lotus"/></svg>Ask your journal</h2>
       <div class="row">
         <input type="text" id="askInput" style="flex:1" placeholder="What did I learn about the holy name this month?">
@@ -425,14 +380,14 @@ details.ideas[open] summary{margin-bottom:8px}
       <div class="prompts" id="askPrompts"></div>
       <div class="answer" id="answer"></div>
     </section>
-    <section aria-labelledby="libH" data-nsec="lib">
+    <section aria-labelledby="libH">
       <div class="head">
         <h2 id="libH"><svg class="lotus"><use href="#i-lotus"/></svg>Teachings</h2>
         <input type="text" id="libSearch" placeholder="Search notes" style="max-width:220px">
       </div>
       <div class="library" id="library"></div>
     </section>
-    <section aria-labelledby="tlH" data-nsec="tl" hidden>
+    <section aria-labelledby="tlH">
       <h2 id="tlH"><svg class="lotus"><use href="#i-lotus"/></svg>Daily log</h2>
       <div id="timeline"></div>
     </section>
@@ -953,28 +908,19 @@ function renderSnips(){
   const pool = snippetPool();
   if(!pool.length){ $("snips").innerHTML = `<div class="empty">When you dictate what you heard or read, Claude turns it into notes. From the next day on, a few of them come back here.</div>`; $("moreSnips").hidden = true; return; }
   const rnd = seeded(todayStr()); const order = pool.map((x,i)=>[rnd(),i]).sort((a,b)=>a[0]-b[0]).map(x=>pool[x[1]]);
-  const pick = [0].map(i=>order[(snipOffset+i)%order.length]).filter((x,i,a)=>a.indexOf(x)===i);
-  $("moreSnips").hidden = pool.length <= 1;
+  const pick = [0,1,2].map(i=>order[(snipOffset+i)%order.length]).filter((x,i,a)=>a.indexOf(x)===i);
+  $("moreSnips").hidden = pool.length <= 3;
   $("snips").innerHTML = pick.map(s=>`<figure class="snip"><p>${esc(s.p)}</p><figcaption class="src">${esc(s.src||(s.kind==="lecture"?"Lecture":"Reading"))} · ${s.kind==="lecture"?"heard":"read"} ${dayLabel(s.date)}</figcaption></figure>`).join("");
 }
-$("moreSnips").onclick = () => { snipOffset += 1; renderSnips(); };
+$("moreSnips").onclick = () => { snipOffset += 3; renderSnips(); };
 
 /* ---------- plan in four quadrants ---------- */
 let planDay = "today";
 const planDate = () => planDay==="today" ? todayStr() : addDays(todayStr(),1);
-let planView = "time";
-try{ planView = localStorage.getItem("abhyasa.planview") || "time"; }catch(e){}
 function renderPlan(){
   $("planToday").setAttribute("aria-pressed", planDay==="today"); $("planTomorrow").setAttribute("aria-pressed", planDay!=="today");
   const p = data().plans[planDate()];
   const blocks = (p?.blocks||[]).slice().sort((a,b)=>(toMin(a.from)??9999)-(toMin(b.from)??9999));
-  $("pvTime").setAttribute("aria-pressed", planView==="time"); $("pvQuad").setAttribute("aria-pressed", planView!=="time");
-  $("quads").className = planView==="time" ? "timeline-plan" : "quads";
-  if(planView==="time"){
-    $("quads").innerHTML = blocks.length ? blocks.map(b=>`<div class="tblock ${b.done?"done":""}" style="--qc:${QUADS[+b.quadrant]?.c||QUADS[3].c}"><input type="checkbox" data-done="${b.id}" ${b.done?"checked":""} aria-label="Done: ${esc(b.title)}"><div><span class="tm">${esc(b.from||"")}${b.to?"–"+esc(b.to):""}</span> <span class="q">${esc(QUADS[+b.quadrant]?.t||"")}</span><div class="ttl">${esc(b.title)}</div></div><button class="link" data-rm="${b.id}" aria-label="Remove ${esc(b.title)}">✕</button></div>`).join("")
-      : `<div class="empty">No plan for ${planDay} yet. Dictate it in the box above.</div>`;
-    return;
-  }
   $("quads").innerHTML = (blocks.length ? "" : `<div class="empty" style="grid-column:1/-1">No plan for ${planDay} yet. Dictate it in the box above.</div>`) + [1,2,3,4].map(q=>{
     const bs = blocks.filter(b=>+b.quadrant===q);
     return `<div class="quad" style="--qc:${QUADS[q].c}"><span class="qt">${q}. ${QUADS[q].t}</span>`+
@@ -982,8 +928,6 @@ function renderPlan(){
         : `<div class="empty">Nothing here.</div>`)+`</div>`;
   }).join("");
 }
-$("pvTime").onclick = () => { planView = "time"; try{ localStorage.setItem("abhyasa.planview","time"); }catch(e){} renderPlan(); };
-$("pvQuad").onclick = () => { planView = "quad"; try{ localStorage.setItem("abhyasa.planview","quad"); }catch(e){} renderPlan(); };
 $("planToday").onclick = () => { planDay = "today"; renderPlan(); };
 $("planTomorrow").onclick = () => { planDay = "tomorrow"; renderPlan(); };
 $("quads").onclick = async e => {
@@ -1105,9 +1049,6 @@ $("timeline").onclick = async ev => {
     pendingDelete.delete(d); try{ await deleteDoc(d); }catch(e){ $("logStatus").textContent = "Couldn't delete that entry."; } }
 };
 
-document.querySelector(".notesseg").onclick = e => { const k = e.target.dataset.ns; if(!k) return;
-  document.querySelectorAll(".notesseg button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.ns===k));
-  document.querySelectorAll("[data-nsec]").forEach(sec=>sec.hidden = sec.dataset.nsec!==k); };
 /* ---------- ask your journal ---------- */
 const ASKS = ["Summarise what I learned this week","How does my wake-up time affect my japa?","How much research did I do this month?","Which service did I do most?"];
 $("askPrompts").innerHTML = ASKS.map(q=>`<button type="button">${esc(q)}</button>`).join("");
