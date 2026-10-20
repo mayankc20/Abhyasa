@@ -1235,7 +1235,10 @@ const BHAJANS = [
  ["Śikṣāṣṭakam","Śrī Caitanya Mahāprabhu","chanting, humility and tolerance"],
  ["Dāmodarāṣṭakam","Satyavrata Muni","Kārtika month, love for little Kṛṣṇa"],
  ["Śrī Nāma (gāy gorā madhur sware)","Bhaktivinoda Ṭhākura","joy of the holy names, enthusiasm"],
- ["Namo namaḥ tulasī","traditional","tulasī worship, devotion"]
+ ["Namo namaḥ tulasī","traditional","tulasī worship, devotion"],
+ ["Śrī Kṛṣṇa-caitanya prabhu jīve doyā kori (Śaraṇāgati)","Bhaktivinoda Ṭhākura","beginning again, the six limbs of surrender"],
+ ["Bhuliyā tomāre (Śaraṇāgati)","Bhaktivinoda Ṭhākura","having forgotten Kṛṣṇa, coming back to Him"],
+ ["Ātma-nivedana, tuwā pade kori (Śaraṇāgati)","Bhaktivinoda Ṭhākura","offering oneself, giving up false independence"]
 ];
 let jBhDay = null, jBhCache = null;
 const yt = q => "https://www.youtube.com/results?search_query="+encodeURIComponent(q);
@@ -1247,13 +1250,17 @@ async function suggestBhajan(force){
   if(!sample){ $("jBhOut").textContent = "Suggestions need Claude, which isn't available here."; return; }
   const since = addDays(todayStr(),-2);
   const recent = journal.filter(r=>r.date>=since).sort((a,b)=>a.createdAt-b.createdAt).map(r=>{ const p = jPlain[r.docId||("j_"+r.id)]||{}; return {date:r.date, mood:p.mood, feelings:p.feelings, text:p.text}; }).slice(-6);
+  const days = [addDays(todayStr(),-1), todayStr()].map(d=>({date:d, ...dayTotals(d), notes:data().entries.filter(e=>e.date===d && !e.private).flatMap(e=>(e.items||[]).map(i=>i.category+": "+i.summary))}));
   if(!recent.length){ $("jBhOut").textContent = "Write tonight's letter, and tomorrow a bhajan and prayer chosen for you will be here."; return; }
   jBhDay = todayStr(); $("jBhAgain").disabled = true; $("jBhOut").textContent = "Choosing a bhajan for you…";
   try{
-    const r = await sample.json(`You are a gentle Vaishnava friend to an ISKCON devotee. From their most recent private letters to Śrīla Prabhupāda (below), sense their situation and mood, then choose 1 or 2 bhajans ONLY from this list (use the index), and write a short prayer they can say today.
+    const r = await sample.json(`You are a gentle Vaishnava friend to an ISKCON devotee. From their most recent private letters to Śrīla Prabhupāda (below), sense their situation and mood together with how their sadhana went, then choose 1 or 2 bhajans ONLY from this list (use the index), and write a short prayer they can say today.
 Bhajans (index: title, author, fits): ${BHAJANS.map((b,i)=>i+": "+b.join(" — ")).join("; ")}
 ${force ? "Pick something different from the most obvious choice." : ""}
 Return JSON only: {"mood":"one short line naming how they seem","bhajans":[{"i":index,"why":"one sentence linking it to their situation"}],"prayer":"4-7 lines in simple English, first person, addressed to Kṛṣṇa, Śrīla Prabhupāda or Śrī Caitanya as fits, specific to their situation, humble and hopeful, no preaching"}
+
+Their sadhana and day yesterday and today (times are minutes after midnight; wake, mangala arati, japa, reading, hearing, research, service, food, sleep, media): ${JSON.stringify(days)}
+Let the sadhana inform the choice too: for example, an early rise and full rounds call for gratitude and joy, a missed mangala arati or late japa for a gentle bhajan of renewal.
 
 Recent letters (JSON):
 ${JSON.stringify(recent)}`, {modelTier:"quick"});
