@@ -1,8 +1,8 @@
 /* Offline support: the app shell and pictures come from the cache, and each visit
    checks for a newer version in the background so updates arrive on the next open. */
-const VERSION = "daybook-v1";
+const VERSION = "abhyasa-v2";
 const SHELL = ["./", "index.html", "platform.js", "manifest.webmanifest", "gita.json", "vendor/anthropic.mjs",
-  "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
+  "icons/icon-192.png", "icons/logo-128.png", "img/krishna-arjuna.jpg", "icons/icon-512.png", "icons/apple-touch-icon.png",
   "img/baby-krsna.jpg", "img/cowherd-lunch.jpg", "img/vrindavan-forest.jpg", "img/damodara.jpg",
   "img/animals.jpg", "img/subordinate.jpg", "img/ordinary-boy.jpg", "img/baka.jpg"];
 

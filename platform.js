@@ -1,4 +1,4 @@
-/* Daybook platform layer.
+/* Abhyasa platform layer.
    The page asks for capabilities through window.claude.use(name), the same way it did as a
    claude.ai artifact. On the phone those are served locally:
    - db, user, assets, downloads: IndexedDB on this device, nothing leaves the phone
@@ -140,9 +140,9 @@
   /* Settings and backups, used by the Settings screen */
   window.daybook = {
     settings,
-    async exportAll(){ return {app:"daybook", version:1, exportedAt:new Date().toISOString(), docs: await getAll("docs")}; },
+    async exportAll(){ return {app:"abhyasa", version:1, exportedAt:new Date().toISOString(), docs: await getAll("docs")}; },
     async importAll(obj){
-      if(!obj || !Array.isArray(obj.docs)) throw new Error("That file isn't a Daybook backup.");
+      if(!obj || !Array.isArray(obj.docs)) throw new Error("That file isn't an Abhyāsa backup.");
       await tx("docs","readwrite", s => { obj.docs.forEach(d => d && d.docId && s.put(d)); });
       emit(); return obj.docs.length;
     },
