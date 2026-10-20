@@ -754,8 +754,9 @@ Return JSON only, with these keys (omit what isn't said; never invent):
  "reflection":"2-3 warm sentences to them about this day: one thing that went well, one gentle suggestion",
  "tomorrow":[{"from":"HH:MM","to":"HH:MM","title":"short","quadrant":1-4}] (only if they say what they will do tomorrow)}
 The dictation may be rough, rambling and cover the whole day in any order: sort it all out. Food, sleep and YouTube or other media go in items (and media_minutes).
-Use 24-hour times. "Mangala arati" may be spelled mangal/mangla aarti. Research minutes = total research time stated or computed from times.`;
+They often speak a mix of Hindi and English (Devanagari or Roman script, with voice-typing errors): understand it fully and write everything in clear English, keeping Sanskrit and devotional terms. Use 24-hour times. "Mangala arati" may be spelled mangal/mangla aarti. Research minutes = total research time stated or computed from times.`;
 const PLAN_INSTR = `You turn a dictated day plan into time blocks. The plan is for DATE.
+They may speak a mix of Hindi and English; write block titles in short, clear English.
 Quadrants: 1 = urgent and important, 2 = urgent but not important, 3 = important but not urgent, 4 = neither.
 Use the quadrant the person states; if they don't, infer sensibly (sadhana, research and study are usually 3; deadlines are 1; errands and interruptions 2; idle scrolling 4).
 Arrange their rough plan into an exact, realistic schedule for the whole day, from waking to sleeping: keep times they fix, give every task a sensible slot and length, keep mangala arati, japa and reading in the morning unless they say otherwise, protect a long focused research block, add meals and short breaks, and keep 7 hours of sleep. Respect their weekly targets and recent pattern, given below. If an existing plan is given, merge it in.
@@ -1147,7 +1148,7 @@ try{ const t = localStorage.getItem("abhyasa.jtidy"); if(t!=null) $("jTidy").che
 $("jTidy").onchange = () => { try{ localStorage.setItem("abhyasa.jtidy", $("jTidy").checked?"1":"0"); }catch(e){} };
 async function tidyJournal(text){
   const sample = await claude.use("sample"); if(!sample) return null;
-  return sample.json(`You help a devotee keep a private diary. Rewrite their rough, dictated entry as a clear, flowing diary entry in the first person, in their own voice and language. Keep every fact, feeling and name they said; fix dictation errors (Sanskrit and ISKCON terms like mangala arati, japa, prabhu, seva); add nothing they didn't say and give no advice. Use short paragraphs.
+  return sample.json(`You help a devotee keep a private diary. Rewrite their rough, dictated entry as a clear, flowing diary entry in the first person, in their own voice and language. Keep every fact, feeling and name they said; fix dictation errors (Sanskrit and ISKCON terms like mangala arati, japa, prabhu, seva); add nothing they didn't say and give no advice. Use short paragraphs. They often speak a mix of Hindi and English: keep that natural Hinglish flavour in Roman script, but make it read smoothly.
 Also pick the feelings that fit from: ${FEELINGS.join(", ")}, and a mood from 1 (very low) to 10 (wonderful).
 Return JSON only: {"text":"...","feelings":["..."],"mood":n}
 
