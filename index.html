@@ -737,6 +737,17 @@ const PLAN_INSTR = `You turn a dictated day plan into time blocks. The plan is f
 Quadrants: 1 = urgent and important, 2 = urgent but not important, 3 = important but not urgent, 4 = neither.
 Use the quadrant the person states; if they don't, infer sensibly (sadhana, research and study are usually 3; deadlines are 1; errands and interruptions 2; idle scrolling 4).
 Return JSON only: {"replace":true|false (true only if they say to redo or replace the plan),"blocks":[{"from":"HH:MM","to":"HH:MM","title":"short","quadrant":1-4}]}`;
+function localPlan(text){
+  const T = String.raw`(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?`, re = new RegExp(T+String.raw`\s*(?:-|–|to|till|until)\s*`+T, "i");
+  const hm = (h,m,ap) => { h = +h; if(ap && /pm/i.test(ap) && h<12) h += 12; if(ap && /am/i.test(ap) && h===12) h = 0; return pad(h)+":"+(m||"00"); };
+  const blocks = text.split(/\n|;/).map(l=>l.trim()).filter(Boolean).map(l=>{
+    const m = l.match(re); if(!m) return null;
+    const q = l.match(/(?:quadrant|\bq)\s*([1-4])/i);
+    const title = l.replace(m[0],"").replace(/\(?\s*(?:quadrant|\bq)\s*[1-4]\s*\)?/i,"").replace(/^[\s:,\-–]+|[\s:,\-–]+$/g,"") || "Block";
+    return {from:hm(m[1],m[2],m[3]||m[6]), to:hm(m[4],m[5],m[6]), title, quadrant: q ? +q[1] : 3};
+  }).filter(Boolean);
+  return blocks.length ? {replace:false, blocks} : null;
+}
 function localParse(text){
   const t = text.toLowerCase(), metrics = {}, items = [];
   const w = t.match(/(?:woke|wake|got up)[^\d]{0,12}(\d{1,2})[:.](\d{2})/); if(w) metrics.wake_time = pad(w[1])+":"+w[2];
@@ -789,7 +800,8 @@ $("planBtn").onclick = async () => {
   try{
     const date = addDays(todayStr(),1);
     let p = null; try{ p = await askJSON(PLAN_INSTR.replace("DATE",date), text); }catch(e){}
-    if(!p || !Array.isArray(p.blocks)){ $("planStatus").textContent = "Add your Claude API key in Settings (gear, top right) to lay out plans."; }
+    if(!p || !Array.isArray(p.blocks)) p = localPlan(text);
+    if(!p){ $("planStatus").textContent = "Write one block per line with times, like \"9:00 to 10:30 research (quadrant 3)\". With a Claude API key in Settings you can just speak it."; }
     else {
       const existing = (!usingExample && plans[date] && !p.replace) ? plans[date].blocks : [];
       const blocks = [...existing, ...p.blocks.map(b=>({...b, id:uid(), quadrant:[1,2,3,4].includes(+b.quadrant)?+b.quadrant:3}))];
