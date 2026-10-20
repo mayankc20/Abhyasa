@@ -56,6 +56,7 @@ body{color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
 .brand{display:flex;align-items:center;gap:10px}
 .brand h1{font-family:var(--display);font-weight:700;font-size:1.9rem;margin:0;letter-spacing:.01em}
 #logStatus{white-space:pre-line}
+.jentry .orig{margin-top:8px;color:var(--muted);font-size:.88rem}.jentry .orig summary{cursor:pointer}
 .brand .logo{width:34px;height:34px;border-radius:50%;display:block;box-shadow:0 0 0 2px var(--saffron)}
 .date{color:var(--muted);font-size:.9rem}
 .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px}
@@ -443,7 +444,7 @@ select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:6px 
     <section class="panel lockpanel" id="jSetup" hidden>
       <svg class="bigLock"><use href="#i-lock"/></svg>
       <h2 style="justify-content:center">Your private journal</h2>
-      <p class="hint" style="margin:0;max-width:46ch">Choose a password. Every entry is locked with it on your own device before it is saved, so nobody can read your journal without it: not Claude, not the daily reminders, not anyone you share the page with.</p>
+      <p class="hint" style="margin:0;max-width:46ch">Choose a password. Every entry is locked with it on your own device before it is saved, so nobody can read your journal without it: not the daily reminders, not anyone you share the page with. Claude sees an entry only for a moment, when it writes one up for you or you ask it to reflect.</p>
       <p class="hint" style="margin:0;max-width:46ch;color:var(--warn)">There is no way to recover a forgotten password. Keep it somewhere safe.</p>
       <form id="setupForm" class="lockform">
         <input type="password" id="pw1" placeholder="Password (8+ characters)" autocomplete="new-password" minlength="8" required>
@@ -474,6 +475,7 @@ select{font:inherit;border:1px solid var(--line);border-radius:10px;padding:6px 
         <div class="row">
           <button class="mic" id="jMic" aria-label="Dictate"><svg width="18" height="18"><use href="#i-mic"/></svg></button>
           <button class="primary" id="jSave">Save privately</button>
+          <label class="row hint"><input type="checkbox" id="jTidy" checked> Claude writes it up</label>
         </div>
         <div class="hint" id="jStatus" role="status">Locks itself after 5 minutes without activity.</div>
       </section>
@@ -1111,16 +1113,38 @@ $("unlockForm").onsubmit = async e => { e.preventDefault();
 };
 $("feelings").innerHTML = FEELINGS.map(f=>`<button type="button" aria-pressed="false">${f}</button>`).join("");
 $("feelings").onclick = e => { if(e.target.tagName!=="BUTTON") return; const f = e.target.textContent; jFeel.has(f)?jFeel.delete(f):jFeel.add(f); e.target.setAttribute("aria-pressed", jFeel.has(f)); };
-$("moodIn").oninput = () => $("moodVal").textContent = $("moodIn").value;
+let moodTouched = false;
+$("moodIn").oninput = () => { moodTouched = true; $("moodVal").textContent = $("moodIn").value; };
+try{ const t = localStorage.getItem("abhyasa.jtidy"); if(t!=null) $("jTidy").checked = t==="1"; }catch(e){}
+$("jTidy").onchange = () => { try{ localStorage.setItem("abhyasa.jtidy", $("jTidy").checked?"1":"0"); }catch(e){} };
+async function tidyJournal(text){
+  const sample = await claude.use("sample"); if(!sample) return null;
+  return sample.json(`You help a devotee keep a private diary. Rewrite their rough, dictated entry as a clear, flowing diary entry in the first person, in their own voice and language. Keep every fact, feeling and name they said; fix dictation errors (Sanskrit and ISKCON terms like mangala arati, japa, prabhu, seva); add nothing they didn't say and give no advice. Use short paragraphs.
+Also pick the feelings that fit from: ${FEELINGS.join(", ")}, and a mood from 1 (very low) to 10 (wonderful).
+Return JSON only: {"text":"...","feelings":["..."],"mood":n}
+
+Entry:
+${text}`, {modelTier:"quick"});
+}
 micFor("jMic","jInput","jStatus");
 $("jSave").onclick = async () => {
   const text = $("jInput").value.trim(); if(!text || !jKey){ $("jInput").focus(); return; }
   $("jSave").disabled = true;
   try{
-    const id = uid(), body = {text, mood:+$("moodIn").value, feelings:[...jFeel]};
+    let body = {text, mood:+$("moodIn").value, feelings:[...jFeel]}, tidied = false;
+    if($("jTidy").checked){
+      $("jStatus").textContent = "Claude is writing it up…";
+      try{ const t = await tidyJournal(text);
+        if(t && typeof t.text==="string" && t.text.trim()){ tidied = true;
+          body = {text:t.text.trim(), original:text, mood: moodTouched ? body.mood : (Number.isFinite(+t.mood) ? Math.min(10,Math.max(1,Math.round(+t.mood))) : body.mood),
+            feelings: body.feelings.length ? body.feelings : (Array.isArray(t.feelings) ? t.feelings.filter(f=>FEELINGS.includes(f)) : [])}; }
+      }catch(e){}
+    }
+    const id = uid();
     await saveDoc("j_"+id, {kind:"journal", id, date:todayStr(), createdAt:Date.now(), ...(await seal(jKey, body))});
     $("jInput").value = ""; jFeel.clear(); $("feelings").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed","false"));
-    $("jStatus").textContent = "Saved and locked with your password.";
+    moodTouched = false;
+    $("jStatus").textContent = tidied ? "Written up and locked with your password. Your own words are kept under the entry." : $("jTidy").checked ? "Saved as you said it (Claude couldn't be reached) and locked with your password." : "Saved and locked with your password.";
   }catch(err){ $("jStatus").textContent = "Couldn't save ("+(err.code||err.message)+"). Your text is still in the box."; }
   $("jSave").disabled = false;
 };
@@ -1160,7 +1184,7 @@ async function renderJournal(){
 function renderJournalList(){
   const q = ($("jSearch").value||"").toLowerCase().trim();
   const rows = journal.slice().sort((a,b)=>b.createdAt-a.createdAt).map(r=>({r, p:jPlain[r.docId||("j_"+r.id)]})).filter(x=>x.p && (!q || (x.p.text+" "+(x.p.feelings||[]).join(" ")).toLowerCase().includes(q)));
-  $("jList").innerHTML = rows.length ? rows.slice(0,100).map(({r,p})=>`<article class="jentry"><div class="meta"><span>${dayLabel(r.date)} · ${new Date(r.createdAt).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}${p.mood!=null?" · mood "+p.mood+"/10":""}</span><button class="link" data-jdel="${esc(r.docId||"j_"+r.id)}">Delete</button></div>${(p.feelings||[]).length?`<div class="tags">${p.feelings.map(f=>`<span>${esc(f)}</span>`).join("")}</div>`:""}<div class="txt">${esc(p.text)}</div></article>`).join("")
+  $("jList").innerHTML = rows.length ? rows.slice(0,100).map(({r,p})=>`<article class="jentry"><div class="meta"><span>${dayLabel(r.date)} · ${new Date(r.createdAt).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}${p.mood!=null?" · mood "+p.mood+"/10":""}</span><button class="link" data-jdel="${esc(r.docId||"j_"+r.id)}">Delete</button></div>${(p.feelings||[]).length?`<div class="tags">${p.feelings.map(f=>`<span>${esc(f)}</span>`).join("")}</div>`:""}<div class="txt">${esc(p.text)}</div>${p.original?`<details class="orig"><summary>What I said</summary><div class="txt">${esc(p.original)}</div></details>`:""}</article>`).join("")
     : `<div class="empty">${q?"No entries match.":"Nothing written yet. Whatever you write here stays between you and your password."}</div>`;
 }
 function renderMood(){
