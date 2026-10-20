@@ -239,6 +239,7 @@ button.primary{background:linear-gradient(135deg,var(--saffron),color-mix(in srg
 .bhajan .bh p{margin:4px 0 6px}
 .bhajan a{color:var(--accent);font-weight:600;text-decoration:none}
 .bhajan .prayer{background:var(--gold-soft);border-radius:14px;padding:12px 14px}
+.bhajan .prayer .head{display:flex;justify-content:space-between;align-items:center}
 .bhajan .prayer p{white-space:pre-line;margin:6px 0 0;font-family:var(--display);font-size:1.08rem;line-height:1.55}
 </style>
 </head>
@@ -647,13 +648,13 @@ function exampleData(){
 }
 
 /* ---------- storage: private rows under your account, with a browser fallback ---------- */
-let entries = [], plans = {}, targets = null, photos = null, vault = null, journal = [], gitaDoc = null, usingExample = false, coll = null;
+let jbh = {}, entries = [], plans = {}, targets = null, photos = null, vault = null, journal = [], gitaDoc = null, usingExample = false, coll = null;
 const LS = "daybook.v2";
-const allDocs = () => [...entries, ...Object.values(plans), ...(targets?[targets]:[]), ...(photos?[photos]:[]), ...(vault?[vault]:[]), ...(gitaDoc?[gitaDoc]:[]), ...journal];
+const allDocs = () => [...entries, ...Object.values(plans), ...(targets?[targets]:[]), ...(photos?[photos]:[]), ...(vault?[vault]:[]), ...(gitaDoc?[gitaDoc]:[]), ...journal, ...Object.values(jbh)];
 function lsWrite(){ try{ localStorage.setItem(LS, JSON.stringify(allDocs())); }catch(e){} }
 function lsRead(){ try{ return JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ return []; } }
 function ingest(docs){
-  entries = []; plans = {}; targets = null; photos = null; vault = null; journal = []; gitaDoc = null;
+  entries = []; plans = {}; targets = null; photos = null; vault = null; journal = []; gitaDoc = null; jbh = {};
   docs.forEach(d=>{
     if(d.kind==="plan") plans[d.date] = d;
     else if(d.kind==="targets") targets = d;
@@ -661,6 +662,7 @@ function ingest(docs){
     else if(d.kind==="vault") vault = d;
     else if(d.kind==="gita") gitaDoc = d;
     else if(d.kind==="journal") journal.push(d);
+    else if(d.kind==="jbhajan") jbh[d.date] = d;
     else entries.push(d);
   });
   entries.sort((a,b)=>b.createdAt-a.createdAt);
@@ -1128,7 +1130,7 @@ async function vaultRaw(pw, v){
   return unb64((await open_(kek, v.wrapped)).k).buffer;
 }
 async function vaultKey(pw, v){ return importKey(await vaultRaw(pw, v)); }
-function lockJournal(){ jEditing = null; $("jBhOut").className = "hint"; $("jBhOut").textContent = ""; jKey = null; jPlain = {}; $("jAnswer").textContent = ""; $("jAskInput").value = ""; clearTimeout(jLockTimer); renderJournal(); }
+function lockJournal(){ jEditing = null; jBhNow = null; jBhEditing = false; $("jBhOut").className = "hint"; $("jBhOut").textContent = ""; jKey = null; jPlain = {}; $("jAnswer").textContent = ""; $("jAskInput").value = ""; clearTimeout(jLockTimer); renderJournal(); }
 function touchJournal(){ clearTimeout(jLockTimer); if(jKey) jLockTimer = setTimeout(lockJournal, 5*60*1000); }
 ["input","click","keydown"].forEach(ev=>$("view-journal").addEventListener(ev, touchJournal));
 document.addEventListener("visibilitychange", ()=>{ if(document.hidden && jKey){ clearTimeout(jLockTimer); jLockTimer = setTimeout(lockJournal, 60*1000); } });
@@ -1240,19 +1242,35 @@ const BHAJANS = [
  ["Bhuliyā tomāre (Śaraṇāgati)","Bhaktivinoda Ṭhākura","having forgotten Kṛṣṇa, coming back to Him"],
  ["Ātma-nivedana, tuwā pade kori (Śaraṇāgati)","Bhaktivinoda Ṭhākura","offering oneself, giving up false independence"]
 ];
-let jBhDay = null, jBhCache = null;
+let jBhBusy = false, jBhNow = null, jBhEditing = false;
 const yt = q => "https://www.youtube.com/results?search_query="+encodeURIComponent(q);
 const lyr = q => "https://www.google.com/search?q="+encodeURIComponent(q+" lyrics kksongs");
+function renderBhajan(){
+  const b = jBhNow; if(!b){ return; }
+  const picks = (b.bhajans||[]).filter(x=>BHAJANS[+x.i]).slice(0,2);
+  $("jBhOut").className = "";
+  $("jBhOut").innerHTML = (b.mood?`<p class="hint" style="margin:0 0 10px">${esc(b.mood)}</p>`:"") + picks.map(x=>{ const [t,a] = BHAJANS[+x.i];
+      return `<div class="bh"><div class="bt">${esc(t)}</div><div class="hint">${esc(a)}</div><p>${esc(x.why||"")}</p><div class="row"><a href="${yt(t+" "+a+" bhajan")}" target="_blank" rel="noopener">Listen</a><a href="${lyr(t)}" target="_blank" rel="noopener">Lyrics</a></div></div>`; }).join("")
+    + (b.prayer!=null ? `<div class="prayer"><div class="head"><span class="label">A prayer for today${b.edited?" · edited":""}</span>${jBhEditing?"":`<button class="link" id="jPrEdit">Edit</button>`}</div>`
+      + (jBhEditing ? `<textarea id="jPrText" style="min-height:160px;margin-top:8px">${esc(b.prayer)}</textarea><div class="row" style="margin-top:8px"><button class="primary" id="jPrSave">Save prayer</button><button class="link" id="jPrCancel">Cancel</button></div>`
+                    : `<p>${esc(b.prayer)}</p>`) + `</div>` : "");
+}
+async function saveBhajan(){
+  const d = todayStr();
+  await saveDoc("jbh_"+d, {kind:"jbhajan", date:d, createdAt:Date.now(), ...(await seal(jKey, jBhNow))});
+}
 async function suggestBhajan(force){
-  if(!jKey) return;
-  if(!force && jBhDay===todayStr()){ if(jBhCache){ $("jBhOut").className = ""; $("jBhOut").innerHTML = jBhCache; } return; }
+  if(!jKey || jBhBusy) return;
+  const rec = jbh[todayStr()];
+  if(!force && rec){ try{ if(!jBhNow || jBhNow._d!==todayStr()){ jBhNow = {...(await open_(jKey, rec)), _d:todayStr()}; } if(!jBhEditing) renderBhajan(); return; }catch(e){} }
+  if(!force && jBhNow && jBhNow._d===todayStr()) return;
   const sample = await claude.use("sample");
   if(!sample){ $("jBhOut").textContent = "Suggestions need Claude, which isn't available here."; return; }
   const since = addDays(todayStr(),-2);
   const recent = journal.filter(r=>r.date>=since).sort((a,b)=>a.createdAt-b.createdAt).map(r=>{ const p = jPlain[r.docId||("j_"+r.id)]||{}; return {date:r.date, mood:p.mood, feelings:p.feelings, text:p.text}; }).slice(-6);
   const days = [addDays(todayStr(),-1), todayStr()].map(d=>({date:d, ...dayTotals(d), notes:data().entries.filter(e=>e.date===d && !e.private).flatMap(e=>(e.items||[]).map(i=>i.category+": "+i.summary))}));
   if(!recent.length){ $("jBhOut").textContent = "Write tonight's letter, and tomorrow a bhajan and prayer chosen for you will be here."; return; }
-  jBhDay = todayStr(); $("jBhAgain").disabled = true; $("jBhOut").textContent = "Choosing a bhajan for you…";
+  jBhBusy = true; $("jBhAgain").disabled = true; $("jBhOut").className = "hint"; $("jBhOut").textContent = "Choosing a bhajan for you…";
   try{
     const r = await sample.json(`You are a gentle Vaishnava friend to an ISKCON devotee. From their most recent private letters to Śrīla Prabhupāda (below), sense their situation and mood together with how their sadhana went, then choose 1 or 2 bhajans ONLY from this list (use the index), and write a short prayer they can say today.
 Bhajans (index: title, author, fits): ${BHAJANS.map((b,i)=>i+": "+b.join(" — ")).join("; ")}
@@ -1264,16 +1282,20 @@ Let the sadhana inform the choice too: for example, an early rise and full round
 
 Recent letters (JSON):
 ${JSON.stringify(recent)}`, {modelTier:"quick"});
-    const picks = (r.bhajans||[]).filter(b=>BHAJANS[+b.i]).slice(0,2);
-    $("jBhOut").className = "";
-    $("jBhOut").innerHTML = (r.mood?`<p class="hint" style="margin:0 0 10px">${esc(r.mood)}</p>`:"") + picks.map(b=>{ const [t,a] = BHAJANS[+b.i];
-      return `<div class="bh"><div class="bt">${esc(t)}</div><div class="hint">${esc(a)}</div><p>${esc(b.why||"")}</p><div class="row"><a href="${yt(t+" "+a+" bhajan")}" target="_blank" rel="noopener">Listen</a><a href="${lyr(t)}" target="_blank" rel="noopener">Lyrics</a></div></div>`; }).join("")
-      + (r.prayer?`<div class="prayer"><div class="label">A prayer for today</div><p>${esc(r.prayer)}</p></div>`:"");
-    jBhCache = $("jBhOut").innerHTML;
-  }catch(e){ jBhDay = null; $("jBhOut").className = "hint"; $("jBhOut").textContent = "Couldn't choose a bhajan just now ("+(e.code||e.message)+"). Tap Another to try again."; }
-  $("jBhAgain").disabled = false;
+    jBhNow = {mood:r.mood||"", bhajans:(r.bhajans||[]).filter(x=>BHAJANS[+x.i]).slice(0,2), prayer:r.prayer||"", _d:todayStr()};
+    jBhEditing = false; renderBhajan();
+    try{ await saveBhajan(); }catch(e){}
+  }catch(e){ $("jBhOut").className = "hint"; $("jBhOut").textContent = "Couldn't choose a bhajan just now ("+(e.code||e.message)+"). Tap Another to try again."; }
+  jBhBusy = false; $("jBhAgain").disabled = false;
 }
 $("jBhAgain").onclick = () => suggestBhajan(true);
+$("jBhOut").onclick = async e => {
+  if(e.target.id==="jPrEdit"){ jBhEditing = true; renderBhajan(); $("jPrText").focus(); }
+  else if(e.target.id==="jPrCancel"){ jBhEditing = false; renderBhajan(); }
+  else if(e.target.id==="jPrSave"){ const t = $("jPrText").value.trim(); if(!t) return;
+    e.target.disabled = true; jBhNow = {...jBhNow, prayer:t, edited:true};
+    try{ await saveBhajan(); jBhEditing = false; renderBhajan(); }catch(err){ e.target.disabled = false; $("jStatus").textContent = "Couldn't save the prayer ("+(err.code||err.message)+")."; } }
+};
 /* ---------- reflect on the private journal (sent only when asked) ---------- */
 const JASKS = ["What patterns do you see in my moods?","What is troubling me most lately?","How does my sadhana affect how I feel?","Give me advice for the coming week"];
 $("jAskPrompts").innerHTML = JASKS.map(q=>`<button type="button">${esc(q)}</button>`).join("");
