@@ -413,8 +413,8 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
           <label>Mangala arati, days per week<input type="number" id="t_ma" min="0" max="7"></label>
           <label>SB class, days per week<input type="number" id="t_sb" min="0" max="7"></label>
           <label>Research, hours per week<input type="number" id="t_research" min="0" step="0.5"></label>
-          <label>Reading, minutes per day<input type="number" id="t_read" min="0"></label>
-          <label>Hearing, minutes per day<input type="number" id="t_hear" min="0"></label>
+          <label>Reading, hours per week<input type="number" id="t_read" min="0" step="0.5"></label>
+          <label>Hearing, hours per week<input type="number" id="t_hear" min="0" step="0.5"></label>
           <label>Phone calls, at most hours per week<input type="number" id="t_calls" min="0" step="0.5"></label>
         </div>
         <label class="hint" style="display:flex;flex-direction:column;gap:4px">Other goals this week<textarea id="t_other" style="min-height:60px"></textarea></label>
@@ -633,6 +633,7 @@ const DEFAULT_ROUTINE = `Usual day:
 Rules:
 - 16 rounds are compulsory, priority 1 whatever happens, and must be finished before 22:00. They take about 2.5 hours.
 - Research at least 4 hours a day.
+- Reading 3.5 hours and hearing 3.5 hours a week each; if a day falls short, make it up later in the week.
 - Nothing important before breakfast unless it is urgent.
 - Sleep 7 hours. If I slept less than 7 hours last night I may need up to 1 hour of day sleep, but help me avoid it unless it is really needed.
 - Phone calls: at most 4 hours a week, about 30–35 minutes a day. If one day has more, keep the following days shorter.
@@ -647,7 +648,7 @@ When seva overlaps the usual day, move chanting, research and reading around it 
 const routineTxt = () => (routine && routine.text) || DEFAULT_ROUTINE;
 const nowHM = () => { const d = new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); };
 const sleepInfo = () => [0,-1,-2].map(i=>addDays(todayStr(),i)).map(d=>{ const m = {}; data().entries.filter(e=>e.date===d).forEach(e=>{ const x = e.metrics||{}; ["sleep_hours","bed_time","wake_time"].forEach(k=>{ if(x[k]!=null && m[k]==null) m[k] = x[k]; }); }); return {date:d, ...m}; });
-const DEFAULT_TARGETS = {wake_by:"04:30", japa_by:"07:30", mangala_days:7, sb_days:7, research_hours:15, reading_min:30, hearing_min:30, calls_hours:4, other:""};
+const DEFAULT_TARGETS = {wake_by:"04:30", japa_by:"07:30", mangala_days:7, sb_days:7, research_hours:15, reading_min:30, hearing_min:30, reading_hours:3.5, hearing_hours:3.5, calls_hours:4, other:""};
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
 const dstr = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -782,7 +783,10 @@ async function deleteDoc(docId){
   ingest(allDocs().filter(d=>d.docId!==docId)); lsWrite();
 }
 const data = () => usingExample ? exampleData() : {entries, plans};
-const tg = () => ({...DEFAULT_TARGETS, ...(targets||{})});
+const tg = () => { const t = {...DEFAULT_TARGETS, ...(targets||{})};
+  if(targets && targets.reading_hours==null && targets.reading_min!=null) t.reading_hours = Math.round(targets.reading_min*7/6)/10;
+  if(targets && targets.hearing_hours==null && targets.hearing_min!=null) t.hearing_hours = Math.round(targets.hearing_min*7/6)/10;
+  return t; };
 
 /* ---------- darshan photos ---------- */
 let assets = null, photoIdx = 0;
@@ -1012,8 +1016,8 @@ function renderCard(){
     stat("i-sun","Woke up", fromMin(t.wake), pill(t.wake==null?null:t.wake<=wb,"on time","late"), "target "+T.wake_by) +
     stat("i-lamp","Mangala arati", t.mangala==null?"–":t.mangala?"Attended":"Missed", "", "this week "+weekTotals().mangala+" / "+T.mangala_days) +
     stat("i-hear","SB class", t.sb==null?"–":t.sb?"Attended":"Missed", "", "this week "+weekTotals().sb+" / "+T.sb_days) +
-    stat("i-book","Reading", fmtDur(t.reading), pill(t.reading?t.reading>=T.reading_min:null,"met","short"), "target "+T.reading_min+" min") +
-    stat("i-hear","Hearing", fmtDur(t.hearing), pill(t.hearing?t.hearing>=T.hearing_min:null,"met","short"), "target "+T.hearing_min+" min") +
+    stat("i-book","Reading", fmtDur(t.reading), "", "week "+(weekTotals().reading/60).toFixed(1)+" / "+T.reading_hours+" h") +
+    stat("i-hear","Hearing", fmtDur(t.hearing), "", "week "+(weekTotals().hearing/60).toFixed(1)+" / "+T.hearing_hours+" h") +
     stat("i-research","Research", fmtDur(t.research), "", "week "+(weekTotals().research/60).toFixed(1)+" / "+T.research_hours+" h");
   const scr = data().entries.filter(e=>e.date===d && Array.isArray(e.screen)).flatMap(e=>e.screen.map((x,i)=>({...x, key:(e.docId||"e_"+e.id)+"|"+i})));
   $("screenPanel").hidden = !scr.length;
@@ -1120,8 +1124,8 @@ function renderTargets(){
     ["Morning SB class", w.sb, +T.sb_days, w.sb+" / "+T.sb_days+" days"],
     ["16 rounds by "+T.japa_by, w.japaOk, 7, w.japaOk+" / 7 days"],
     ["Research", w.research/60, +T.research_hours, (w.research/60).toFixed(1)+" / "+T.research_hours+" h"],
-    ["Reading", w.reading, T.reading_min*7, Math.round(w.reading)+" / "+T.reading_min*7+" min"],
-    ["Hearing", w.hearing, T.hearing_min*7, Math.round(w.hearing)+" / "+T.hearing_min*7+" min"],
+    ["Reading", w.reading/60, +T.reading_hours, (w.reading/60).toFixed(1)+" / "+T.reading_hours+" h"],
+    ["Hearing", w.hearing/60, +T.hearing_hours, (w.hearing/60).toFixed(1)+" / "+T.hearing_hours+" h"],
     ["Phone calls (limit)", w.calls/60, +T.calls_hours, (w.calls/60).toFixed(1)+" / "+T.calls_hours+" h", true]
   ];
   $("targets").innerHTML = `<span class="hint">Week from ${dayLabel(weekStart(refDay()))} · day ${w.days} of 7 · green is on pace${targets?"":" · these are default targets"}</span>` +
@@ -1131,12 +1135,12 @@ function renderTargets(){
 }
 $("editTargets").onclick = () => { const T = tg();
   $("t_wake").value = T.wake_by; $("t_japa").value = T.japa_by; $("t_ma").value = T.mangala_days; $("t_sb").value = T.sb_days; $("t_research").value = T.research_hours;
-  $("t_read").value = T.reading_min; $("t_hear").value = T.hearing_min; $("t_calls").value = T.calls_hours; $("t_other").value = T.other||"";
+  $("t_read").value = T.reading_hours; $("t_hear").value = T.hearing_hours; $("t_calls").value = T.calls_hours; $("t_other").value = T.other||"";
   $("targetForm").hidden = false; $("targets").hidden = true; };
 $("cancelTargets").onclick = () => { $("targetForm").hidden = true; $("targets").hidden = false; };
 $("targetForm").onsubmit = async e => { e.preventDefault();
   const t = {kind:"targets", wake_by:$("t_wake").value||"04:30", japa_by:$("t_japa").value||"07:30", mangala_days:+$("t_ma").value||0, sb_days:+$("t_sb").value||0,
-    research_hours:+$("t_research").value||0, reading_min:+$("t_read").value||0, hearing_min:+$("t_hear").value||0, calls_hours:+$("t_calls").value||0, other:$("t_other").value.trim(), updatedAt:Date.now()};
+    research_hours:+$("t_research").value||0, reading_hours:+$("t_read").value||0, hearing_hours:+$("t_hear").value||0, reading_min:Math.round((+$("t_read").value||0)*60/7), hearing_min:Math.round((+$("t_hear").value||0)*60/7), calls_hours:+$("t_calls").value||0, other:$("t_other").value.trim(), updatedAt:Date.now()};
   try{ await saveDoc("targets", t); $("targetForm").hidden = true; $("targets").hidden = false; }catch(err){ $("logStatus").textContent = "Couldn't save targets."; } };
 
 /* ---------- charts ---------- */
