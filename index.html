@@ -327,6 +327,9 @@ body{background:radial-gradient(70vw 45vh at 0% 0%,color-mix(in srgb,var(--saffr
 .tl-item.now .tl-card{box-shadow:0 0 0 2px var(--saffron),0 8px 20px -12px var(--saffron)}
 .tl-free{grid-column:2;font-size:.78rem;color:var(--muted);border:1.5px dashed var(--line);border-radius:14px;padding:4px 12px;width:max-content}
 @media (prefers-reduced-motion:reduce){.hero img.photo{animation:none}}
+.scene.wide{grid-template-columns:1fr;gap:14px}
+.scene.wide img.pic{max-height:260px;transform:rotate(-1.5deg)}
+.scene.wide p{text-align:center;justify-self:center}
 </style>
 </head>
 <body>
@@ -876,7 +879,7 @@ function renderScenes(){ // today's darshan photos also fill the pictures at the
     const id = t.length ? t[(i+1) % t.length] : null;
     const [img,pos] = el.dataset.img.split("|");
     el.style.setProperty("--img", id ? `url("${blobSrc(id)}")` : img); el.style.setProperty("--pos", id ? "50% 30%" : pos);
-    let pic = el.querySelector("img.pic"); if(!pic){ pic = document.createElement("img"); pic.className = "pic"; pic.alt = ""; el.prepend(pic); }
+    let pic = el.querySelector("img.pic"); if(!pic){ pic = document.createElement("img"); pic.className = "pic"; pic.alt = ""; pic.onload = () => el.classList.toggle("wide", pic.naturalWidth > pic.naturalHeight*1.1); el.prepend(pic); }
     const src = id ? blobSrc(id) : urlOf(img); if(pic.getAttribute("src")!==src) pic.src = src;
   });
   const lid = t.length ? t[(document.querySelectorAll(".scene").length+1) % t.length] : null;
@@ -894,6 +897,8 @@ function renderHero(){
   $("heroVerse").textContent = pick ? "“"+pick.p+"”  · "+(pick.src||"") : "Keep a record of your sadhana, service and study, and let the teachings come back to you.";
 }
 $("prevPhoto").onclick = () => { photoIdx--; renderHero(); };
+// with several darshan photos, the big picture rotates through them
+setInterval(() => { if(document.hidden || $("view-today").hidden || todaysDarshan().length < 2) return; photoIdx++; renderHero(); }, 12000);
 $("nextPhoto").onclick = () => { photoIdx++; renderHero(); };
 $("addPhoto").onclick = () => $("photoInput").click();
 function shrink(file){
