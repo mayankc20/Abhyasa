@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f6f3ff" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#14112a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0c0a1d" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Abhyasa">
@@ -31,7 +31,7 @@
   --deva:"Tiro Devanagari Sanskrit","Noto Serif Devanagari","Mukta",serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#14112a; --surface:#1f1a3f; --ink:#f4f0ff; --muted:#b7aedb; --line:#372e63;
+  --bg:#0c0a1d; --surface:#171334; --ink:#f4f0ff; --muted:#b2a9d6; --line:#2b2452;
   --accent:#5ccbff; --accent-soft:#163650; --saffron:#b892ff; --saffron-soft:#2f2456; --gold:#ffd447; --gold-soft:#3b3217;
   --tulasi:#7cc474; --good:#7cc474; --warn:#ff8a55; --on-accent:#14112a;
   --sky1:#1d1842; --sky2:#243f73; --sky3:#6b4fb0;
@@ -39,7 +39,7 @@
   --c-sleep:#99a8e0; --c-food:#7cc474; --c-media:#f07a98; --c-private:#a59bb0; --c-service:#e08ed6;
   --q1:#ff7aa8; --q2:#ffd447; --q3:#5ccbff; --q4:#a59bb0; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#14112a; --surface:#1f1a3f; --ink:#f4f0ff; --muted:#b7aedb; --line:#372e63;
+  --bg:#0c0a1d; --surface:#171334; --ink:#f4f0ff; --muted:#b2a9d6; --line:#2b2452;
   --accent:#5ccbff; --accent-soft:#163650; --saffron:#b892ff; --saffron-soft:#2f2456; --gold:#ffd447; --gold-soft:#3b3217;
   --tulasi:#7cc474; --good:#7cc474; --warn:#ff8a55; --on-accent:#14112a;
   --sky1:#1d1842; --sky2:#243f73; --sky3:#6b4fb0;
@@ -330,6 +330,17 @@ body{background:radial-gradient(70vw 45vh at 0% 0%,color-mix(in srgb,var(--saffr
 .scene.wide{grid-template-columns:1fr;gap:14px}
 .scene.wide img.pic{max-height:260px;transform:rotate(-1.5deg)}
 .scene.wide p{text-align:center;justify-self:center}
+#themeBtn{font-size:1.15rem;padding:2px 6px;text-decoration:none}
+:root[data-theme="dark"] body{background:radial-gradient(70vw 45vh at 0% 0%,rgba(150,100,255,.16),transparent 70%),radial-gradient(60vw 45vh at 100% 35%,rgba(70,170,255,.10),transparent 70%),radial-gradient(70vw 45vh at 25% 100%,rgba(255,200,70,.08),transparent 70%),var(--bg);background-attachment:fixed}
+:root[data-theme="dark"] .panel{box-shadow:0 14px 34px -22px rgba(0,0,0,.8),0 0 0 1px var(--line)}
+.pedit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border-radius:20px;background:var(--surface);box-shadow:0 0 0 2px var(--saffron)}
+.pedit input,.pedit select{width:100%;min-width:0}
+.pedit .full{grid-column:1/-1}
+.tl-card .tt,.block .ttl{cursor:pointer}
+#planAdd{align-self:flex-start}
+.topbar{flex-wrap:nowrap}.topbar .row{gap:4px;flex-wrap:nowrap}
+@media (max-width:440px){.date{font-size:.78rem}.brand h1{font-size:1.5rem}}
+html,body{overflow-anchor:none}
 </style>
 </head>
 <body>
@@ -355,7 +366,7 @@ body{background:radial-gradient(70vw 45vh at 0% 0%,color-mix(in srgb,var(--saffr
 <div class="wrap">
   <div class="topbar">
     <div class="brand"><img class="logo" src="icons/logo-128.png" alt="" width="34" height="34"><h1>Abhyāsa</h1></div>
-    <div class="row"><span class="date" id="today"></span><button id="exportBtn" class="link" hidden>Export</button><button class="gear" id="openSettings" aria-label="Settings"><svg width="22" height="22"><use href="#i-gear"/></svg></button></div>
+    <div class="row"><span class="date" id="todayDate"></span><button id="exportBtn" class="link" hidden>Export</button><button class="link" id="themeBtn" aria-label="Day or night colours">☀️</button><button class="gear" id="openSettings" aria-label="Settings"><svg width="22" height="22"><use href="#i-gear"/></svg></button></div>
   </div>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
@@ -726,7 +737,7 @@ const dayLabel = d => new Date(d+"T12:00:00").toLocaleDateString(undefined,{week
 const weekStart = d => { const x = new Date(d+"T12:00:00"); const dow = (x.getDay()+6)%7; x.setDate(x.getDate()-dow); return dstr(x); };
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
-$("today").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
+$("todayDate").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
 const hr = new Date().getHours();
 $("greet").textContent = hr < 12 ? "Good morning, Mayank" : hr < 17 ? "Hare Krishna, Mayank" : "Good evening, Mayank";
 
@@ -896,6 +907,10 @@ function renderHero(){
   const pick = s.length ? s[Math.floor(seeded(todayStr()+"hero")()*s.length)] : null;
   $("heroVerse").textContent = pick ? "“"+pick.p+"”  · "+(pick.src||"") : "Keep a record of your sadhana, service and study, and let the teachings come back to you.";
 }
+/* night colours by default; the ☀️/🌙 button switches */
+function applyTheme(t){ document.documentElement.dataset.theme = t; $("themeBtn").textContent = t==="dark" ? "☀️" : "🌙"; }
+(()=>{ let t = "dark"; try{ t = localStorage.getItem("abhyasa.theme") || "dark"; }catch(e){} applyTheme(t); })();
+$("themeBtn").onclick = () => { const t = document.documentElement.dataset.theme==="dark" ? "light" : "dark"; applyTheme(t); try{ localStorage.setItem("abhyasa.theme", t); }catch(e){} };
 $("prevPhoto").onclick = () => { photoIdx--; renderHero(); };
 // with several darshan photos, the big picture rotates through them
 setInterval(() => { if(document.hidden || $("view-today").hidden || todaysDarshan().length < 2) return; photoIdx++; renderHero(); }, 12000);
@@ -1010,7 +1025,8 @@ $("logBtn").onclick = async () => {
     const n = entry.notes.reduce((a,x)=>a+(x.points||[]).length,0);
     const tmr = viaClaude && entry.date===todayStr() && Array.isArray(p.tomorrow) ? p.tomorrow.filter(b=>b && b.from && b.to && b.title) : [];
     if(tmr.length){ const d = addDays(todayStr(),1), ex = (!usingExample && plans[d]) ? plans[d].blocks : [];
-      await saveDoc("plan_"+d, {kind:"plan", date:d, blocks:[...ex, ...tmr.map(b=>({...b, id:uid(), quadrant:[1,2,3,4].includes(+b.quadrant)?+b.quadrant:3}))], dictation:(plans[d]?.dictation||""), updatedAt:Date.now()}); }
+      const nb = tmr.map(b=>({from:b.from, to:b.to, title:b.title, id:uid(), quadrant:[1,2,3,4].includes(+b.quadrant)?+b.quadrant:3}));
+      await saveDoc("plan_"+d, {kind:"plan", date:d, blocks:[...ex, ...nb], generated:[...(plans[d]?.generated||[]), ...nb], dictation:(plans[d]?.dictation||""), updatedAt:Date.now()}); }
     $("logStatus").textContent = !viaClaude ? "Saved as you said it. To have Claude turn it into a sadhana card and notes, add an API key in Settings (gear, top right), or use the claude.ai version." : (entry.late ? "Logged for "+dayLabel(entry.date)+", marked late. Hare Krishna!" : "Logged. Hare Krishna!")+(n?" Made "+n+" teaching note"+(n===1?"":"s")+", see the Notes tab.":"")+(tmr.length?" Added "+tmr.length+" block"+(tmr.length===1?"":"s")+" to tomorrow's plan.":"")+(p.reflection?"\n\n"+p.reflection:"");
     $("logInput").value = ""; $("privChk").checked = false; setLogDay();
   }catch(e){ $("logStatus").textContent = "Couldn't save that ("+(e.code||e.message)+"). Your text is still in the box."; }
@@ -1021,7 +1037,7 @@ $("planBtn").onclick = async () => {
   $("planBtn").disabled = true; $("planStatus").textContent = "Laying out the plan…";
   try{
     const forToday = planFor==="today", date = forToday ? todayStr() : addDays(todayStr(),1);
-    let p = null; try{ p = await askJSON(PLAN_INSTR.replace("DATE",date)+"\nTheir usual day and rules:\n"+routineTxt()+"\nRecent sleep: "+JSON.stringify(sleepInfo())+"\nThis week so far (minutes; calls limit is calls_hours a week, so balance what is left over the remaining days): "+JSON.stringify(weekTotals())+(forToday ? "\nThis is a re-plan of TODAY. It is now "+nowHM()+". Keep blocks already marked done as they are, arrange only from now until bedtime, and fit in what is still due today (rounds left, research hours left). Logged today so far: "+JSON.stringify(dayTotals(todayStr())) : "")+"\nWeekly targets: "+JSON.stringify(tg())+"\nLast 7 days: "+JSON.stringify(Array.from({length:7},(_,i)=>addDays(todayStr(),i-6)).map(d=>({date:d, ...dayTotals(d)})))+"\nExisting plan for that day: "+JSON.stringify((!usingExample && plans[date]?.blocks||[]).map(({id,...b})=>b)), text); }catch(e){}
+    let p = null; try{ p = await askJSON(PLAN_INSTR.replace("DATE",date)+"\nTheir usual day and rules:\n"+routineTxt()+"\nRecent sleep: "+JSON.stringify(sleepInfo())+"\nThis week so far (minutes; calls limit is calls_hours a week, so balance what is left over the remaining days): "+JSON.stringify(weekTotals())+(forToday ? "\nThis is a re-plan of TODAY. It is now "+nowHM()+". Keep blocks already marked done as they are, arrange only from now until bedtime, and fit in what is still due today (rounds left, research hours left). Logged today so far: "+JSON.stringify(dayTotals(todayStr())) : "")+"\nWeekly targets: "+JSON.stringify(tg())+"\nLast 7 days: "+JSON.stringify(Array.from({length:7},(_,i)=>addDays(todayStr(),i-6)).map(d=>({date:d, ...dayTotals(d)})))+(planLessons().length ? "\nHow they corrected your recent plans (learn their real preferences from these and plan that way; don't repeat the same mistakes):\n"+planLessons().join("\n") : "")+"\nExisting plan for that day: "+JSON.stringify((!usingExample && plans[date]?.blocks||[]).map(({id,...b})=>b)), text); }catch(e){}
     if(!p || !Array.isArray(p.blocks)) p = localPlan(text);
     if(!p){ $("planStatus").textContent = "Write one block per line with times, like \"9:00 to 10:30 research (quadrant 3)\". With a Claude API key in Settings you can just speak it."; }
     else {
@@ -1029,7 +1045,8 @@ $("planBtn").onclick = async () => {
       const existing = !p.replace ? old : forToday ? old.filter(b=>b.done) : [];
       const kept = new Set(existing.map(b=>b.from+"|"+b.title));
       const blocks = [...existing, ...p.blocks.filter(b=>!kept.has(b.from+"|"+b.title)).map(b=>({...b, id:uid(), quadrant:[1,2,3,4].includes(+b.quadrant)?+b.quadrant:3}))];
-      await saveDoc("plan_"+date, {kind:"plan", date, blocks, dictation:text, updatedAt:Date.now()});
+      const gen = p.replace ? blocks : [...(plans[date]?.generated||[]), ...blocks.filter(b=>!old.includes(b))];
+      await saveDoc("plan_"+date, {kind:"plan", date, blocks, generated: gen.map(({done,...b})=>b), dictation:text, updatedAt:Date.now()});
       planDay = forToday ? "today" : "tomorrow"; renderPlan(); if(p.advice) $("suggestion").textContent = p.advice;
       $("planStatus").textContent = p.advice ? (forToday ? "The rest of today is re-arranged: " : "Tomorrow is arranged: ")+p.blocks.length+" blocks. Notes below." : "Added "+p.blocks.length+" block"+(p.blocks.length===1?"":"s")+" to "+(forToday?"today's":"tomorrow's")+" plan.";
       $("planInput").value = "";
@@ -1140,9 +1157,10 @@ function renderTimeline2(blocks){
     if(prevEnd!=null && f!=null && f-prevEnd >= 20) h += `<div class="tl-item"><span></span><span class="tl-free">Free · ${fmtDur(f-prevEnd)}</span></div>`;
     if(t!=null) prevEnd = Math.max(prevEnd??0, t);
     const live = isToday && f!=null && t!=null && now>=f && now<t;
+    if(planEdit===b.id){ h += `<div class="tl-item"><span class="tl-time">${esc(b.from||"")}</span>${editForm(b)}</div>`; return; }
     h += `<div class="tl-item ${b.done?"done":""} ${live?"now":""}" style="--qc:${QUADS[+b.quadrant]?.c||"var(--q3)"}"><span class="tl-time">${esc(b.from||"")}</span>
       <div class="tl-card" style="--h:${dur==null?64:Math.round(Math.min(150, 60 + Math.max(0,dur-30)*0.45))}px"><span class="ico" aria-hidden="true">${iconFor(b.title||"")}</span>
-      <span class="tx"><span class="tt">${esc(b.title)}</span><span class="sub">${esc(b.from||"")}${b.to?"–"+esc(b.to):""}${dur?" · "+fmtDur(dur):""} · ${QUADS[+b.quadrant]?.t||""}</span></span>
+      <span class="tx" data-edit="${b.id}"><span class="tt">${esc(b.title)}</span><span class="sub">${esc(b.from||"")}${b.to?"–"+esc(b.to):""}${dur?" · "+fmtDur(dur):""} · ${QUADS[+b.quadrant]?.t||""}</span></span>
       <input type="checkbox" data-done="${b.id}" ${b.done?"checked":""} aria-label="Done: ${esc(b.title)}"><button class="link" data-rm="${b.id}" aria-label="Remove ${esc(b.title)}">✕</button></div></div>`; });
   return h;
 }
@@ -1152,13 +1170,14 @@ function renderPlan(){
   const blocks = (p?.blocks||[]).slice().sort((a,b)=>(toMin(a.from)??9999)-(toMin(b.from)??9999));
   $("pvTime").setAttribute("aria-pressed", planView==="timeline"); $("pvQuad").setAttribute("aria-pressed", planView!=="timeline");
   $("quads").className = planView==="timeline" ? "tline" : "quads";
-  if(planView==="timeline"){ $("quads").innerHTML = blocks.length ? renderTimeline2(blocks) : `<div class="empty">No plan for ${planDay} yet. Dictate it in the box above.</div>`; return; }
+  const addRow = planEdit==="new" ? editForm({from:"",to:"",title:"",quadrant:3}) : `<button id="planAdd" type="button" data-edit="new">+ Add a block</button>`;
+  if(planView==="timeline"){ $("quads").innerHTML = (blocks.length ? renderTimeline2(blocks) : `<div class="empty">No plan for ${planDay} yet. Dictate it in the box above.</div>`) + addRow; return; }
   $("quads").innerHTML = (blocks.length ? "" : `<div class="empty" style="grid-column:1/-1">No plan for ${planDay} yet. Dictate it in the box above.</div>`) + [1,2,3,4].map(q=>{
     const bs = blocks.filter(b=>+b.quadrant===q);
     return `<div class="quad" style="--qc:${QUADS[q].c}"><span class="qt">${q}. ${QUADS[q].t}</span>`+
-      (bs.length ? bs.map(b=>`<div class="block ${b.done?"done":""}"><input type="checkbox" data-done="${b.id}" ${b.done?"checked":""} aria-label="Done: ${esc(b.title)}"><span class="tm">${esc(b.from||"")}${b.to?"–"+esc(b.to):""}</span><span class="ttl">${esc(b.title)}</span><button class="link" data-rm="${b.id}" aria-label="Remove ${esc(b.title)}">✕</button></div>`).join("")
+      (bs.length ? bs.map(b=>`<div class="block ${b.done?"done":""}"><input type="checkbox" data-done="${b.id}" ${b.done?"checked":""} aria-label="Done: ${esc(b.title)}"><span class="tm">${esc(b.from||"")}${b.to?"–"+esc(b.to):""}</span><span class="ttl" data-edit="${b.id}">${esc(b.title)}</span><button class="link" data-rm="${b.id}" aria-label="Remove ${esc(b.title)}">✕</button></div>`).join("")
         : `<div class="empty">Nothing here.</div>`)+`</div>`;
-  }).join("");
+  }).join("") + `<div style="grid-column:1/-1">${planEdit && planEdit!=="new" ? editForm(blocks.find(b=>b.id===planEdit)||{}) : addRow}</div>`;
 }
 $("planToday").onclick = () => { planDay = "today"; renderPlan(); };
 let planFor = "tomorrow";
@@ -1178,13 +1197,42 @@ $("planTomorrow").onclick = () => { planDay = "tomorrow"; renderPlan(); };
 $("pvTime").onclick = () => { planView = "timeline"; try{ localStorage.setItem("abhyasa.pview","timeline"); }catch(e){} renderPlan(); };
 $("pvQuad").onclick = () => { planView = "quads"; try{ localStorage.setItem("abhyasa.pview","quads"); }catch(e){} renderPlan(); };
 try{ if(localStorage.getItem("abhyasa.pview")==="quads") planView = "quads"; }catch(e){}
+const savePlanBlocks = (p, blocks) => saveDoc("plan_"+p.date, {kind:"plan", date:p.date, blocks, ...(p.generated?{generated:p.generated}:{}), dictation:p.dictation||"", updatedAt:Date.now()});
+// what they changed in Claude's recent plans: moved, renamed, removed or added blocks
+function planLessons(){
+  const out = [];
+  Object.values(plans).filter(p=>p.generated && p.generated.length).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8).forEach(p=>{
+    const now = new Map(p.blocks.map(b=>[b.id,b])), gen = new Map(p.generated.map(b=>[b.id,b]));
+    p.generated.forEach(g=>{ const b = now.get(g.id);
+      if(!b) out.push(`${p.date}: removed "${g.title}" ${g.from}-${g.to}`);
+      else { const ch = ["from","to","title","quadrant"].filter(k=>String(b[k])!==String(g[k]));
+        if(ch.length) out.push(`${p.date}: changed "${g.title}" ${g.from}-${g.to} q${g.quadrant} to "${b.title}" ${b.from}-${b.to} q${b.quadrant}`); } });
+    p.blocks.filter(b=>!gen.has(b.id)).forEach(b=>out.push(`${p.date}: added "${b.title}" ${b.from}-${b.to} q${b.quadrant}`));
+  });
+  return out.slice(0,30);
+}
+let planEdit = null;
+function editForm(b){ return `<div class="pedit"><label class="hint">From<input type="time" id="peFrom" value="${esc(b.from||"")}"></label><label class="hint">To<input type="time" id="peTo" value="${esc(b.to||"")}"></label>
+  <label class="hint full">What<input type="text" id="peTitle" value="${esc(b.title||"")}"></label>
+  <label class="hint full">Quadrant<select id="peQ">${[1,2,3,4].map(q=>`<option value="${q}" ${+b.quadrant===q?"selected":""}>${q}. ${QUADS[q].t}</option>`).join("")}</select></label>
+  <div class="row full"><button class="primary" id="peSave" type="button">Save</button><button id="peCancel" type="button">Cancel</button></div></div>`; }
 $("quads").onclick = async e => {
+  const ed = e.target.closest("[data-edit]")?.dataset.edit;
+  if(ed && !e.target.dataset.done && !e.target.dataset.rm){ if(usingExample){ $("planStatus").textContent = "That's the example plan. Dictate your own to start."; return; } planEdit = ed; renderPlan(); $("peTitle")?.focus(); return; }
+  if(e.target.id==="peCancel"){ planEdit = null; renderPlan(); return; }
+  if(e.target.id==="peSave"){
+    const d = planDate(), p = plans[d] || {kind:"plan", date:d, blocks:[], dictation:""};
+    const nb = {from:$("peFrom").value, to:$("peTo").value, title:$("peTitle").value.trim()||"Block", quadrant:+$("peQ").value};
+    const blocks = planEdit==="new" ? [...p.blocks, {...nb, id:uid()}] : p.blocks.map(b=>b.id===planEdit?{...b, ...nb}:b);
+    planEdit = null;
+    try{ await savePlanBlocks(p, blocks); renderPlan(); }catch(err){ $("planStatus").textContent = "Couldn't update the plan."; }
+    return; }
   const done = e.target.dataset.done, rm = e.target.dataset.rm;
   if(!done && !rm) return;
   if(usingExample){ $("planStatus").textContent = "That's the example plan. Dictate your own to start."; renderPlan(); return; }
   const p = plans[planDate()]; if(!p) return;
   const blocks = rm ? p.blocks.filter(b=>b.id!==rm) : p.blocks.map(b=>b.id===done?{...b, done:e.target.checked}:b);
-  try{ await saveDoc("plan_"+p.date, {kind:"plan", date:p.date, blocks, dictation:p.dictation||"", updatedAt:Date.now()}); }catch(err){ $("planStatus").textContent = "Couldn't update the plan."; }
+  try{ await savePlanBlocks(p, blocks); }catch(err){ $("planStatus").textContent = "Couldn't update the plan."; }
 };
 $("suggestBtn").onclick = async () => {
   const sample = await claude.use("sample");
@@ -1196,6 +1244,7 @@ $("suggestBtn").onclick = async () => {
     await sample(`You help a devotee keep a balanced schedule of sadhana, service and research. Times are minutes after midnight in the data.
 Their usual day and rules:
 ${routineTxt()}
+How they corrected recent plans: ${JSON.stringify(planLessons())}
 Weekly targets: ${JSON.stringify(tg())}
 Last 7 days (wake, mangala, sb class, japaDone, reading, hearing, research minutes): ${JSON.stringify(days)}
 This week so far: ${JSON.stringify(weekTotals())}
@@ -1464,13 +1513,21 @@ let moodTouched = false;
 $("moodIn").oninput = () => { moodTouched = true; $("moodVal").textContent = $("moodIn").value; };
 try{ const t = localStorage.getItem("abhyasa.jtidy"); if(t!=null) $("jTidy").checked = t==="1"; }catch(e){}
 $("jTidy").onchange = () => { try{ localStorage.setItem("abhyasa.jtidy", $("jTidy").checked?"1":"0"); }catch(e){} };
+// how they corrected earlier write-ups, so the next one matches their voice (stays inside the private journal call)
+function journalLessons(){
+  const ex = journal.slice().sort((a,b)=>(b.editedAt||0)-(a.editedAt||0)).map(r=>jPlain[r.docId||("j_"+r.id)]).filter(p=>p && p.draft && p.text && p.draft!==p.text).slice(0,4);
+  if(!ex.length) return "";
+  return "\n\nThey edited some of your earlier letters. Learn their preferences from these (wording, length, what to keep or leave out) and apply them; never copy the content:\n" +
+    ex.map((p,i)=>`Example ${i+1}\nYour version: ${p.draft.slice(0,1200)}\nTheir corrected version: ${p.text.slice(0,1200)}`).join("\n\n");
+}
 async function tidyJournal(text){
   const sample = await claude.use("sample"); if(!sample) return null;
   return sample.json(`You help a devotee keep a private diary, written as a daily letter to Śrīla Prabhupāda. Turn their rough, dictated entry (often a mix of Hindi and English, with voice-typing errors) into a heartfelt letter in clear, simple English, in the first person and in their own voice.
-Begin with "Dear Śrīla Prabhupāda," on its own line, then "Please accept my humble obeisances. All glories to Your Divine Grace." Then tell him about the day in short paragraphs, in the order that makes sense: sadhana, what they heard and read, service, study and research, struggles and feelings, and any prayer or resolution they expressed. End with "Your servant," on its own line.
+Begin with "Dear Śrīla Prabhupāda," on its own line, then "Please accept my humble obeisances. All glories to Your Divine Grace." Then tell him about the day in short paragraphs, in the order that makes sense: sadhana, what they heard and read, service, study and research, struggles and feelings, any dream they had (describe it faithfully in its own paragraph), their thoughts about Āśraya Mātājī if they mention her (dictation may spell it ashraya/asraya mataji or mata ji; write "Āśraya Mātājī", keep every thought faithfully and respectfully in its own paragraph), and any prayer or resolution they expressed. End with "Your servant," on its own line.
 Keep every fact, feeling and name they said, translate Hindi faithfully, fix dictation errors (Sanskrit and ISKCON terms like mangala arati, japa, prabhu, seva); add nothing they didn't say, give no advice and don't flatter.
 Also pick the feelings that fit from: ${FEELINGS.join(", ")}, and a mood from 1 (very low) to 10 (wonderful).
-Return JSON only: {"text":"...","feelings":["..."],"mood":n}
+Also return "dream" (the dream in 1-3 sentences, or "") and "asraya" (their thoughts about Āśraya Mātājī in 1-3 sentences, or "").
+Return JSON only: {"text":"...","feelings":["..."],"mood":n,"dream":"...","asraya":"..."}${journalLessons()}
 
 Entry:
 ${text}`, {modelTier:"quick"});
@@ -1504,7 +1561,8 @@ $("jSave").onclick = async () => {
       try{ const t = await tidyJournal(text);
         if(t && typeof t.text==="string" && t.text.trim()){ tidied = true;
           body = {text:t.text.trim(), original:text, mood: moodTouched ? body.mood : (Number.isFinite(+t.mood) ? Math.min(10,Math.max(1,Math.round(+t.mood))) : body.mood),
-            feelings: body.feelings.length ? body.feelings : (Array.isArray(t.feelings) ? t.feelings.filter(f=>FEELINGS.includes(f)) : [])}; }
+            feelings: body.feelings.length ? body.feelings : (Array.isArray(t.feelings) ? t.feelings.filter(f=>FEELINGS.includes(f)) : []),
+            dream: typeof t.dream==="string" ? t.dream.trim() : "", asraya: typeof t.asraya==="string" ? t.asraya.trim() : ""}; }
       }catch(e){}
     }
     const id = uid();
@@ -1612,12 +1670,12 @@ async function askPrivate(){
   const sample = await claude.use("sample");
   if(!sample){ $("jAnswer").textContent = "Add your Claude API key in Settings (gear, top right) to reflect with Claude."; return; }
   const since = addDays(todayStr(),-60);
-  const priv = journal.filter(r=>r.date>=since).sort((a,b)=>a.createdAt-b.createdAt).map(r=>{ const p = jPlain[r.docId||("j_"+r.id)]||{}; return {date:r.date, mood:p.mood, feelings:p.feelings, text:p.text}; }).slice(-200);
+  const priv = journal.filter(r=>r.date>=since).sort((a,b)=>a.createdAt-b.createdAt).map(r=>{ const p = jPlain[r.docId||("j_"+r.id)]||{}; return {date:r.date, mood:p.mood, feelings:p.feelings, text:p.text, dream:p.dream||undefined, asraya:p.asraya||undefined}; }).slice(-200);
   const days = Array.from({length:60},(_,i)=>addDays(todayStr(),i-59)).map(d=>({date:d, ...dayTotals(d)})).filter(d=>d.count>0);
   if(!priv.length){ $("jAnswer").textContent = "Write a few entries first, then ask."; return; }
   $("jAnswer").textContent = "Reflecting…"; $("jAskBtn").disabled = true;
   try{
-    await sample(`You are a wise, warm spiritual friend to an ISKCON devotee, reading their private diary with their permission. Answer from the entries and sadhana data below only. Notice patterns between mood, feelings and their sadhana (wake time, mangala arati, japa, reading, hearing, research). Be honest and specific, cite dates, and be gentle. Where it helps, offer practical advice in the spirit of Śrīla Prabhupāda's teachings, without preaching. If something sounds like a serious crisis, say kindly that talking to a trusted person or professional would help. Under 250 words, plain text.\n\nPrivate entries (JSON):\n${JSON.stringify(priv)}\n\nSadhana by day (times are minutes after midnight):\n${JSON.stringify(days)}\n\nQuestion: ${q}`,
+    await sample(`You are a wise, warm spiritual friend to an ISKCON devotee, reading their private diary with their permission. Answer from the entries and sadhana data below only. Notice patterns between mood, feelings and their sadhana (wake time, mangala arati, japa, reading, hearing, research). Be honest and specific, cite dates, and be gentle. Where it helps, offer practical advice in the spirit of Śrīla Prabhupāda's teachings, without preaching. If something sounds like a serious crisis, say kindly that talking to a trusted person or professional would help. Under 250 words, plain text.\n\nPrivate entries (JSON; dream and asraya hold any dream and their thoughts about Āśraya Mātājī):\n${JSON.stringify(priv)}\n\nSadhana by day (times are minutes after midnight):\n${JSON.stringify(days)}\n\nQuestion: ${q}`,
       {onText:u=>{ $("jAnswer").textContent = u.text; }, cache:false});
   }catch(e){ $("jAnswer").textContent = e.code==="rate_limited" ? "Too many requests. Try again in a minute." : e.code==="not_granted" ? "Your Claude API key was rejected. Check it in Settings." : "Couldn't get an answer ("+e.code+")."; }
   $("jAskBtn").disabled = false;
@@ -1651,7 +1709,7 @@ $("jList").onclick = async ev => {
     const k = jEditing, rec = journal.find(r=>(r.docId||"j_"+r.id)===k), text = $("jEditText").value.trim();
     if(!rec || !text || !jKey) return;
     ev.target.disabled = true;
-    try{ const body = {...(jPlain[k]||{}), text};
+    try{ const old = jPlain[k]||{}, body = {...old, text, draft: old.draft || (old.original ? old.text : undefined)};
       await saveDoc(k, {kind:"journal", id:rec.id, date:rec.date, createdAt:rec.createdAt, editedAt:Date.now(), ...(await seal(jKey, body))});
       jPlain[k] = body; jEditing = null; renderJournalList(); $("jStatus").textContent = "Changes saved and locked."; }
     catch(e){ $("jEditStatus").textContent = "Couldn't save ("+(e.code||e.message)+")."; ev.target.disabled = false; }
