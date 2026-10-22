@@ -908,7 +908,7 @@ $("photoInput").onchange = async e => {
   $("addPhoto").disabled = true; $("addPhoto").textContent = "Adding…";
   const ids = photoIds().slice(), added = {...(photos?.added||{})};
   for(const f of files){ try{ const r = await assets.upload(await shrink(f)); ids.push(r.id); added[r.id] = todayStr(); }catch(err){ $("logStatus").textContent = "One photo couldn't be added ("+(err.code||err.message)+"). JPEG or PNG works best."; } }
-  try{ await saveDoc("photos", {kind:"photos", ids, added, updatedAt:Date.now()}); photoIdx = 0; }catch(err){}
+  try{ await saveDoc("photos", {kind:"photos", ids, added, auto:(photos?.auto||[]), updatedAt:Date.now()}); photoIdx = 0; }catch(err){}
   $("addPhoto").disabled = false; $("addPhoto").textContent = "Add today's darshan";
   renderHero();
 };
@@ -917,7 +917,7 @@ $("rmPhoto").onclick = async () => {
   if(!rmArmed){ rmArmed = true; $("rmPhoto").textContent = "Tap again to remove"; setTimeout(()=>{ rmArmed=false; $("rmPhoto").textContent="Remove"; },4000); return; }
   rmArmed = false; $("rmPhoto").textContent = "Remove";
   const ids = photoIds(), id = currentPhoto().id; if(!id) return;
-  try{ const added = {...(photos?.added||{})}; delete added[id]; await saveDoc("photos", {kind:"photos", ids: ids.filter(x=>x!==id), added, updatedAt:Date.now()}); await assets.delete(id); }catch(e){}
+  try{ const added = {...(photos?.added||{})}; delete added[id]; await saveDoc("photos", {kind:"photos", ids: ids.filter(x=>x!==id), added, auto:(photos?.auto||[]).filter(x=>x!==id), updatedAt:Date.now()}); await assets.delete(id); }catch(e){}
   renderHero();
 };
 
