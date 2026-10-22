@@ -341,6 +341,14 @@ body{background:radial-gradient(70vw 45vh at 0% 0%,color-mix(in srgb,var(--saffr
 .topbar{flex-wrap:nowrap}.topbar .row{gap:4px;flex-wrap:nowrap}
 @media (max-width:440px){.date{font-size:.78rem}.brand h1{font-size:1.5rem}}
 html,body{overflow-anchor:none}
+/* tabs: each with its own colour, the open one glows */
+#tab-today{--tc:#ffc93c}#tab-plan{--tc:#4fc8ff}#tab-progress{--tc:#5be3a0}#tab-notes{--tc:#ff7ab6}#tab-gita{--tc:#ff9d47}#tab-journal{--tc:#c39bff}
+:root:not([data-theme="dark"]) #tab-today{--tc:#c98a00}:root:not([data-theme="dark"]) #tab-plan{--tc:#0b8fd6}:root:not([data-theme="dark"]) #tab-progress{--tc:#1f9d63}:root:not([data-theme="dark"]) #tab-notes{--tc:#d63384}:root:not([data-theme="dark"]) #tab-gita{--tc:#e06a00}:root:not([data-theme="dark"]) #tab-journal{--tc:#7b3fe4}
+.tabs{background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.tabs button svg{color:color-mix(in srgb,var(--tc) 75%,var(--muted));transition:filter .25s,transform .25s}
+.tabs button{transition:background .25s,color .25s,box-shadow .25s}
+.tabs button[aria-selected="true"]{color:var(--tc);background:color-mix(in srgb,var(--tc) 18%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--tc) 45%,transparent),0 0 18px -2px color-mix(in srgb,var(--tc) 70%,transparent);text-shadow:0 0 10px color-mix(in srgb,var(--tc) 60%,transparent)}
+.tabs button[aria-selected="true"] svg{color:var(--tc);filter:drop-shadow(0 0 6px var(--tc));transform:translateY(-1px) scale(1.08)}
 </style>
 </head>
 <body>
