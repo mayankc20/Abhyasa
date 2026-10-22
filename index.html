@@ -292,6 +292,41 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
   .scene{min-height:46vh}
 }
 @media (prefers-reduced-motion:reduce){.hero img.photo,.scene::after{animation:none}}
+/* ===== artistic layout: whole pictures in frames over their own glow, Tiimo-style day timeline ===== */
+body{background:radial-gradient(70vw 45vh at 0% 0%,color-mix(in srgb,var(--saffron) 16%,transparent),transparent 70%),radial-gradient(60vw 45vh at 100% 35%,color-mix(in srgb,var(--accent) 13%,transparent),transparent 70%),radial-gradient(70vw 45vh at 25% 100%,color-mix(in srgb,var(--gold) 14%,transparent),transparent 70%),var(--bg);background-attachment:fixed}
+.panel{border:none;border-radius:24px;box-shadow:0 12px 34px -22px rgba(60,30,120,.45),0 0 0 1px color-mix(in srgb,var(--line) 70%,transparent)}
+/* hero: the whole picture, framed, floating on a glow of its own colours */
+.hero{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:320px;padding:26px 0 0;border-radius:36px;background:#2a1b4a;box-shadow:0 26px 50px -30px rgba(60,20,120,.7)}
+.hero::before{content:"";position:absolute;inset:-60px;background:var(--hero-img,none) center/cover;filter:blur(38px) saturate(1.5) brightness(.72);z-index:0}
+.hero .shade{z-index:1;background:linear-gradient(180deg,rgba(20,10,40,0) 40%,rgba(20,10,40,.55))}
+.hero .art{z-index:0}
+.hero img.photo{position:relative;inset:auto;z-index:2;width:auto;height:auto;max-width:min(80%,420px);max-height:58vh;object-fit:contain;border-radius:22px;animation:float 9s ease-in-out infinite alternate;box-shadow:0 0 0 3px rgba(255,226,140,.8),0 0 0 9px rgba(255,255,255,.12),0 34px 60px -24px rgba(0,0,0,.8)}
+@keyframes float{from{transform:translateY(0) rotate(-.6deg)}to{transform:translateY(-8px) rotate(.6deg)}}
+.hero .copy{z-index:2;align-items:center;text-align:center;padding:20px 22px 28px}
+.hero .verse{max-width:38ch}
+.hero .tools{z-index:3;top:12px;right:12px;flex-direction:row;align-items:center}
+/* tab pictures: a tilted framed painting beside its line, on the painting's glow */
+.scene{display:grid;grid-template-columns:minmax(0,44%) 1fr;align-items:center;gap:18px;min-height:0;padding:24px 20px;border-radius:32px;background:#2a1b4a;box-shadow:0 22px 44px -28px rgba(60,20,120,.7)}
+.scene::after{inset:-60px;background:var(--img) center/cover;filter:blur(32px) saturate(1.5) brightness(.7);animation:none}
+.scene::before{background:linear-gradient(115deg,rgba(20,10,40,.05),rgba(20,10,40,.45))}
+.scene img.pic{position:relative;z-index:2;display:block;justify-self:center;width:auto;height:auto;max-width:100%;max-height:300px;border-radius:16px;transform:rotate(-3deg);box-shadow:0 0 0 3px rgba(255,226,140,.8),0 22px 36px -18px rgba(0,0,0,.8)}
+.scene p{padding:0;font-size:clamp(1.15rem,4.6vw,1.5rem);line-height:1.3}
+@media (max-width:720px){.hero,.scene{border-radius:0 0 34px 34px}.scene{border-radius:34px}}
+/* Tiimo-style timeline */
+.tline{display:flex;flex-direction:column;gap:10px}
+.tl-item{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:stretch}
+.tl-time{font-size:.8rem;color:var(--muted);text-align:right;padding-top:14px;font-variant-numeric:tabular-nums;font-weight:700}
+.tl-card{position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:22px;min-height:var(--h,64px);background:color-mix(in srgb,var(--qc) 17%,var(--surface));box-shadow:0 8px 20px -16px var(--qc)}
+.tl-card .ico{font-size:1.45rem;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:color-mix(in srgb,var(--qc) 30%,var(--surface));flex:none}
+.tl-card .tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.tl-card .tt{font-weight:700;line-height:1.25}
+.tl-card .sub{font-size:.78rem;color:var(--muted)}
+.tl-card input{width:22px;height:22px;margin:0;accent-color:var(--qc);flex:none}
+.tl-card .link{color:var(--muted);flex:none}
+.tl-item.done .tl-card{opacity:.55}.tl-item.done .tt{text-decoration:line-through}
+.tl-item.now .tl-card{box-shadow:0 0 0 2px var(--saffron),0 8px 20px -12px var(--saffron)}
+.tl-free{grid-column:2;font-size:.78rem;color:var(--muted);border:1.5px dashed var(--line);border-radius:14px;padding:4px 12px;width:max-content}
+@media (prefers-reduced-motion:reduce){.hero img.photo{animation:none}}
 </style>
 </head>
 <body>
@@ -408,6 +443,10 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
         <div class="seg" role="group" aria-label="Which day">
           <button id="planToday" aria-pressed="true">Today</button>
           <button id="planTomorrow" aria-pressed="false">Tomorrow</button>
+        </div>
+        <div class="seg" role="group" aria-label="View">
+          <button id="pvTime" aria-pressed="true">Timeline</button>
+          <button id="pvQuad" aria-pressed="false">Quadrants</button>
         </div>
       </div>
       <div class="quads" id="quads"></div>
@@ -827,6 +866,7 @@ function photoIds(){ return photos?.ids || []; }
 const todaysDarshan = () => photoIds().filter(id=>(photos?.added||{})[id]===todayStr()).reverse();
 function heroList(){ const t = todaysDarshan(); return [...t.map(id=>({id, src:blobSrc(id), pos:"50% 30%", alt:"Today's darshan"})), ...BUILTIN, ...photoIds().filter(id=>!t.includes(id)).map(id=>({id, src:blobSrc(id), pos:"50% 35%", alt:"Darshan"}))]; }
 function currentPhoto(){ const L = heroList(), n = L.length, base = todaysDarshan().length ? 0 : Math.floor(Date.now()/864e5); return L[((base + photoIdx) % n + n) % n]; }
+const urlOf = v => (String(v).match(/url\(["']?([^"')]+)["']?\)/)||[])[1] || "";
 function renderScenes(){ // today's darshan photos also fill the pictures at the top of the other tabs
   const t = todaysDarshan();
   document.querySelectorAll(".scene").forEach((el,i)=>{
@@ -834,12 +874,14 @@ function renderScenes(){ // today's darshan photos also fill the pictures at the
     const id = t.length > 1 ? t[1 + i % (t.length-1)] : t[0];
     const [img,pos] = el.dataset.img.split("|");
     el.style.setProperty("--img", id ? `url("${blobSrc(id)}")` : img); el.style.setProperty("--pos", id ? "50% 30%" : pos);
+    let pic = el.querySelector("img.pic"); if(!pic){ pic = document.createElement("img"); pic.className = "pic"; pic.alt = ""; el.prepend(pic); }
+    const src = id ? blobSrc(id) : urlOf(img); if(pic.getAttribute("src")!==src) pic.src = src;
   });
 }
 $("heroImg").onerror = () => { $("heroImg").hidden = true; $("heroArt").style.opacity = 1; };
 function renderHero(){
   const ph = currentPhoto();
-  $("heroImg").hidden = false; $("heroImg").src = ph.src; $("heroImg").style.objectPosition = ph.pos; $("heroImg").alt = ph.alt; $("heroArt").style.opacity = 0;
+  $("heroImg").hidden = false; $("heroImg").src = ph.src; $("hero").style.setProperty("--hero-img", `url("${ph.src}")`); $("heroImg").style.objectPosition = ph.pos; $("heroImg").alt = ph.alt; $("heroArt").style.opacity = 0;
   $("prevPhoto").hidden = $("nextPhoto").hidden = heroList().length < 2;
   $("rmPhoto").hidden = !ph.id || !assets;
   renderScenes();
@@ -1079,10 +1121,29 @@ $("moreSnips").onclick = () => { snipOffset += 3; renderSnips(); };
 /* ---------- plan in four quadrants ---------- */
 let planDay = "today";
 const planDate = () => planDay==="today" ? todayStr() : addDays(todayStr(),1);
+let planView = "timeline";
+const ICONS = [[/arati|aarti|mangal/i,"🪔"],[/round|japa|chant/i,"📿"],[/\bsb\b|bhagavat|bhagwat|class|lecture|hear/i,"🎧"],[/read|gita|book/i,"📖"],[/research|paper|thesis|writ|analys|study|chapter|data/i,"🔬"],[/breakfast|lunch|dinner|prasad|meal|eat|food/i,"🍛"],[/call|phone/i,"📞"],[/seva|service|kitchen|offering|cook|clean/i,"🙏"],[/sleep|nap|rest|bed/i,"🌙"],[/wake|ready|bath|shower/i,"🌅"],[/walk|exercise|yoga/i,"🚶"],[/advisor|meet|email|reply|mail/i,"✉️"],[/errand|bank|shop|market/i,"🛍️"],[/break|tea/i,"🍵"]];
+const iconFor = t => (ICONS.find(([re])=>re.test(t))||[,"✨"])[1];
+function renderTimeline2(blocks){
+  const now = toMin(nowHM()), isToday = planDay==="today";
+  let h = "", prevEnd = null;
+  blocks.forEach(b=>{ const f = toMin(b.from), t = toMin(b.to), dur = f!=null && t!=null ? Math.max(0, t-f) : null;
+    if(prevEnd!=null && f!=null && f-prevEnd >= 20) h += `<div class="tl-item"><span></span><span class="tl-free">Free · ${fmtDur(f-prevEnd)}</span></div>`;
+    if(t!=null) prevEnd = Math.max(prevEnd??0, t);
+    const live = isToday && f!=null && t!=null && now>=f && now<t;
+    h += `<div class="tl-item ${b.done?"done":""} ${live?"now":""}" style="--qc:${QUADS[+b.quadrant]?.c||"var(--q3)"}"><span class="tl-time">${esc(b.from||"")}</span>
+      <div class="tl-card" style="--h:${dur==null?64:Math.round(Math.min(150, 60 + Math.max(0,dur-30)*0.45))}px"><span class="ico" aria-hidden="true">${iconFor(b.title||"")}</span>
+      <span class="tx"><span class="tt">${esc(b.title)}</span><span class="sub">${esc(b.from||"")}${b.to?"–"+esc(b.to):""}${dur?" · "+fmtDur(dur):""} · ${QUADS[+b.quadrant]?.t||""}</span></span>
+      <input type="checkbox" data-done="${b.id}" ${b.done?"checked":""} aria-label="Done: ${esc(b.title)}"><button class="link" data-rm="${b.id}" aria-label="Remove ${esc(b.title)}">✕</button></div></div>`; });
+  return h;
+}
 function renderPlan(){
   $("planToday").setAttribute("aria-pressed", planDay==="today"); $("planTomorrow").setAttribute("aria-pressed", planDay!=="today");
   const p = data().plans[planDate()];
   const blocks = (p?.blocks||[]).slice().sort((a,b)=>(toMin(a.from)??9999)-(toMin(b.from)??9999));
+  $("pvTime").setAttribute("aria-pressed", planView==="timeline"); $("pvQuad").setAttribute("aria-pressed", planView!=="timeline");
+  $("quads").className = planView==="timeline" ? "tline" : "quads";
+  if(planView==="timeline"){ $("quads").innerHTML = blocks.length ? renderTimeline2(blocks) : `<div class="empty">No plan for ${planDay} yet. Dictate it in the box above.</div>`; return; }
   $("quads").innerHTML = (blocks.length ? "" : `<div class="empty" style="grid-column:1/-1">No plan for ${planDay} yet. Dictate it in the box above.</div>`) + [1,2,3,4].map(q=>{
     const bs = blocks.filter(b=>+b.quadrant===q);
     return `<div class="quad" style="--qc:${QUADS[q].c}"><span class="qt">${q}. ${QUADS[q].t}</span>`+
@@ -1105,6 +1166,9 @@ $("routineSave").onclick = async () => {
   catch(e){ $("routineStatus").textContent = "Couldn't save ("+(e.code||e.message)+")."; }
 };
 $("planTomorrow").onclick = () => { planDay = "tomorrow"; renderPlan(); };
+$("pvTime").onclick = () => { planView = "timeline"; try{ localStorage.setItem("abhyasa.pview","timeline"); }catch(e){} renderPlan(); };
+$("pvQuad").onclick = () => { planView = "quads"; try{ localStorage.setItem("abhyasa.pview","quads"); }catch(e){} renderPlan(); };
+try{ if(localStorage.getItem("abhyasa.pview")==="quads") planView = "quads"; }catch(e){}
 $("quads").onclick = async e => {
   const done = e.target.dataset.done, rm = e.target.dataset.rm;
   if(!done && !rm) return;
