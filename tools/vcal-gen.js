@@ -1,5 +1,5 @@
 const A = require('astronomy-engine');
-const obs = new A.Observer(23.4234, 88.3881, 15); // Śrī Māyāpur
+const obs = new A.Observer(31.7088, 76.9320, 760); // Mandi, Himachal Pradesh
 const IST = 5.5*3600e3;
 const lahiri = d => 23.85 + (d.getUTCFullYear()+d.getUTCMonth()/12-2000)*0.01397; // ayanāṁśa, deg
 const sunLon = t => A.SunPosition(t).elon;
@@ -36,11 +36,14 @@ for(let i=0;i<days.length;i++){
   const x = days[i], prev = days[i-1], nx = days[i+1];
   for(const ek of [11,26]){
     // Ekādaśī tithi at sunrise and not touched by Daśamī at aruṇodaya
+    const nm = ek===11 && !x.adh ? SHUKLA_EK[x.m]+" Ekādaśī" : "Ekādaśī";
+    // vṛddhi: Ekādaśī at two sunrises -> fast on the second
+    if(x.t===ek && nx && nx.t===ek) continue;
     if(x.t===ek && x.ta!==ek-1) add(x.ds,{e:(ek===11 && !x.adh ? SHUKLA_EK[x.m]+" Ekādaśī" : "Ekādaśī")});
     // viddha: Daśamī at aruṇodaya -> fast on the next day (Dvādaśī)
     if(x.t===ek && x.ta===ek-1 && nx) add(nx.ds,{e:(ek===11 && !x.adh ? SHUKLA_EK[x.m]+" Ekādaśī" : "Ekādaśī")+" (fast on Dvādaśī)"});
     // kṣaya: Ekādaśī never at sunrise
-    if(prev && prev.t===ek-1 && x.t===ek+1) add(x.ds,{e:"Ekādaśī (fast on Dvādaśī)"});
+    if(prev && prev.t===ek-1 && x.t===ek+1) add(x.ds,{e:(ek===11 && !x.adh ? SHUKLA_EK[x.m]+" Ekādaśī" : "Ekādaśī")+" (fast on Dvādaśī)"});
   }
   if(!x.adh) for(const [m,t,n] of FEST){
     if(x.m===m && (x.t===t || (prev && prev.t===t-1 && x.t===t+1))) { if(!(prev && out[prev.ds]?.f?.includes(n))) add(x.ds,{f:[...(out[x.ds]?.f||[]),n]}); }
