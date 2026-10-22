@@ -349,6 +349,17 @@ html,body{overflow-anchor:none}
 .tabs button{transition:background .25s,color .25s,box-shadow .25s}
 .tabs button[aria-selected="true"]{color:var(--tc);background:color-mix(in srgb,var(--tc) 18%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--tc) 45%,transparent),0 0 18px -2px color-mix(in srgb,var(--tc) 70%,transparent);text-shadow:0 0 10px color-mix(in srgb,var(--tc) 60%,transparent)}
 .tabs button[aria-selected="true"] svg{color:var(--tc);filter:drop-shadow(0 0 6px var(--tc));transform:translateY(-1px) scale(1.08)}
+/* glowing blocks: each tab's boxes take that tab's colour; stats each get their own */
+#view-today{--vc:#ffc93c}#view-plan{--vc:#4fc8ff}#view-progress{--vc:#5be3a0}#view-notes{--vc:#ff7ab6}#view-gita{--vc:#ff9d47}#view-journal{--vc:#c39bff}
+:root:not([data-theme="dark"]) #view-today{--vc:#c98a00}:root:not([data-theme="dark"]) #view-plan{--vc:#0b8fd6}:root:not([data-theme="dark"]) #view-progress{--vc:#1f9d63}:root:not([data-theme="dark"]) #view-notes{--vc:#d63384}:root:not([data-theme="dark"]) #view-gita{--vc:#e06a00}:root:not([data-theme="dark"]) #view-journal{--vc:#7b3fe4}
+.view .panel,.view .entry,.view .note{background:linear-gradient(150deg,color-mix(in srgb,var(--vc) 14%,var(--surface)),var(--surface) 55%);box-shadow:0 0 0 1px color-mix(in srgb,var(--vc) 35%,transparent),0 10px 30px -18px color-mix(in srgb,var(--vc) 70%,transparent)}
+.view .panel h2 .lotus,.view section > h2 .lotus,.view .head h2 .lotus{color:var(--vc)}
+.card .stat{--sc:#ffc93c;border:none;background:linear-gradient(160deg,color-mix(in srgb,var(--sc) 22%,var(--surface)),var(--surface) 70%);box-shadow:0 0 0 1px color-mix(in srgb,var(--sc) 40%,transparent),0 8px 22px -14px var(--sc)}
+.card .stat .ic{color:var(--sc);filter:drop-shadow(0 0 5px color-mix(in srgb,var(--sc) 70%,transparent))}
+.card .stat:nth-child(1){--sc:#ff9d47}.card .stat:nth-child(2){--sc:#ffc93c}.card .stat:nth-child(3){--sc:#c39bff}.card .stat:nth-child(4){--sc:#ff7ab6}.card .stat:nth-child(5){--sc:#5be3a0}.card .stat:nth-child(6){--sc:#4fc8ff}.card .stat:nth-child(7){--sc:#4fe0d0}
+.tl-card{background:linear-gradient(135deg,color-mix(in srgb,var(--qc) 30%,var(--surface)),color-mix(in srgb,var(--qc) 10%,var(--surface)));box-shadow:0 0 0 1px color-mix(in srgb,var(--qc) 50%,transparent),0 10px 26px -12px color-mix(in srgb,var(--qc) 80%,transparent)}
+.tl-card .ico{background:color-mix(in srgb,var(--qc) 40%,var(--surface));box-shadow:0 0 14px -3px var(--qc)}
+.quad{border:none;background:linear-gradient(160deg,color-mix(in srgb,var(--qc) 20%,var(--surface)),var(--surface) 70%);box-shadow:0 0 0 1px color-mix(in srgb,var(--qc) 45%,transparent),0 10px 24px -14px var(--qc)}
 </style>
 </head>
 <body>
@@ -1158,6 +1169,9 @@ const planDate = () => planDay==="today" ? todayStr() : addDays(todayStr(),1);
 let planView = "timeline";
 const ICONS = [[/arati|aarti|mangal/i,"🪔"],[/round|japa|chant/i,"📿"],[/\bsb\b|bhagavat|bhagwat|class|lecture|hear/i,"🎧"],[/read|gita|book/i,"📖"],[/research|paper|thesis|writ|analys|study|chapter|data/i,"🔬"],[/breakfast|lunch|dinner|prasad|meal|eat|food/i,"🍛"],[/call|phone/i,"📞"],[/seva|service|kitchen|offering|cook|clean/i,"🙏"],[/sleep|nap|rest|bed/i,"🌙"],[/wake|ready|bath|shower/i,"🌅"],[/walk|exercise|yoga/i,"🚶"],[/advisor|meet|email|reply|mail/i,"✉️"],[/errand|bank|shop|market/i,"🛍️"],[/break|tea/i,"🍵"]];
 const iconFor = t => (ICONS.find(([re])=>re.test(t))||[,"✨"])[1];
+// each kind of activity gets its own glowing colour in the timeline
+const ACOL = {"🪔":"#ffb02e","📿":"#ff8a3d","🎧":"#ff6fae","📖":"#4fe08f","🔬":"#3fb8ff","🍛":"#ffd447","📞":"#2fd6c5","🙏":"#ff7a7a","🌙":"#8f8cff","🌅":"#ffcf6b","🚶":"#9be15d","✉️":"#e05cff","🛍️":"#f5a3ff","🍵":"#c9a27a"};
+const colorFor = t => ACOL[iconFor(t)] || null;
 function renderTimeline2(blocks){
   const now = toMin(nowHM()), isToday = planDay==="today";
   let h = "", prevEnd = null;
@@ -1166,7 +1180,7 @@ function renderTimeline2(blocks){
     if(t!=null) prevEnd = Math.max(prevEnd??0, t);
     const live = isToday && f!=null && t!=null && now>=f && now<t;
     if(planEdit===b.id){ h += `<div class="tl-item"><span class="tl-time">${esc(b.from||"")}</span>${editForm(b)}</div>`; return; }
-    h += `<div class="tl-item ${b.done?"done":""} ${live?"now":""}" style="--qc:${QUADS[+b.quadrant]?.c||"var(--q3)"}"><span class="tl-time">${esc(b.from||"")}</span>
+    h += `<div class="tl-item ${b.done?"done":""} ${live?"now":""}" style="--qc:${colorFor(b.title||"")||QUADS[+b.quadrant]?.c||"var(--q3)"}"><span class="tl-time">${esc(b.from||"")}</span>
       <div class="tl-card" style="--h:${dur==null?64:Math.round(Math.min(150, 60 + Math.max(0,dur-30)*0.45))}px"><span class="ico" aria-hidden="true">${iconFor(b.title||"")}</span>
       <span class="tx" data-edit="${b.id}"><span class="tt">${esc(b.title)}</span><span class="sub">${esc(b.from||"")}${b.to?"–"+esc(b.to):""}${dur?" · "+fmtDur(dur):""} · ${QUADS[+b.quadrant]?.t||""}</span></span>
       <input type="checkbox" data-done="${b.id}" ${b.done?"checked":""} aria-label="Done: ${esc(b.title)}"><button class="link" data-rm="${b.id}" aria-label="Remove ${esc(b.title)}">✕</button></div></div>`; });
