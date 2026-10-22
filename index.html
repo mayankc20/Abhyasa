@@ -267,6 +267,12 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
 .routine summary{cursor:pointer;font-family:"Baloo 2",var(--font,inherit);font-weight:600;color:var(--saffron)}
 .routine textarea{min-height:300px;margin-top:10px;font-size:.92rem;line-height:1.45}
 #view-plan .head .seg{flex-shrink:0}
+#logDate{width:auto;padding:4px 8px;font-size:.88rem}
+#logDate.past{border-color:var(--warn);color:var(--warn)}
+.vday.ok.late{border:2.5px solid var(--warn)}
+.vday.ok.late.gold{border-color:var(--warn);box-shadow:0 0 0 2.5px var(--gold),0 0 10px -2px var(--gold)}
+.vkey .k.late{background:color-mix(in srgb,var(--good) 22%,var(--surface));border:2px solid var(--warn)}
+.vsel .lateNote{color:var(--warn);font-size:.85rem}
 </style>
 </head>
 <body>
@@ -334,6 +340,7 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
         <button class="mic" id="logMic" aria-label="Dictate"><svg width="18" height="18"><use href="#i-mic"/></svg></button>
         <button class="primary" id="logBtn">Log it</button>
         <label class="row hint"><input type="checkbox" id="privChk"> Private</label>
+        <label class="row hint">For <input type="date" id="logDate" aria-label="Day this log is for"></label>
       </div>
       <div class="prompts" id="logPrompts"></div>
       <div class="hint" id="logStatus" role="status">Tell your whole day roughly, in any order: sadhana, lectures, reading, service, research, food, sleep, YouTube, even tomorrow's plans. Claude sorts it all out.</div>
@@ -450,7 +457,7 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
       <div class="panel vcal">
         <div class="head"><button class="link" id="calPrev" aria-label="Previous month">‹</button><span class="vmonth" id="calMonth"></span><button class="link" id="calNext" aria-label="Next month">›</button></div>
         <div class="vgrid" id="calGrid"></div>
-        <div class="vkey"><span><i class="k ok"></i>Sadhana logged</span><span><i class="k miss"></i>Not logged</span><span><i class="k gold"></i>Ekādaśī or festival</span><span>Dates for Mandi</span></div>
+        <div class="vkey"><span><i class="k ok"></i>Sadhana logged</span><span><i class="k late"></i>Logged late</span><span><i class="k miss"></i>Not logged</span><span><i class="k gold"></i>Ekādaśī or festival</span><span>Dates for Mandi</span></div>
       </div>
       <div id="calDay"></div>
       <div id="timeline"></div>
@@ -644,6 +651,9 @@ const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
 const dstr = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const todayStr = () => dstr(new Date());
+const madeOn = e => e.createdAt ? dstr(new Date(e.createdAt)) : e.date;
+const logDay = () => { const v = $("logDate").value; return /^\d{4}-\d{2}-\d{2}$/.test(v) && v < todayStr() ? v : todayStr(); };
+function setLogDay(d){ $("logDate").max = todayStr(); $("logDate").value = d || todayStr(); $("logDate").classList.toggle("past", logDay() < todayStr()); }
 const addDays = (s,n) => { const d = new Date(s+"T12:00:00"); d.setDate(d.getDate()+n); return dstr(d); };
 const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 const toMin = t => { const m = /^(\d{1,2}):(\d{2})/.exec(t||""); return m ? +m[1]*60 + +m[2] : null; };
@@ -898,22 +908,24 @@ $("logBtn").onclick = async () => {
   const text = $("logInput").value.trim(); if(!text){ $("logInput").focus(); return; }
   $("logBtn").disabled = true; $("logStatus").textContent = "Making your notes…";
   try{
-    let p = null; try{ p = await askJSON(LOG_INSTR.replace("TODAY",todayStr()), text); }catch(e){}
+    const forDay = logDay();
+    let p = null; try{ p = await askJSON(LOG_INSTR.replace("TODAY",forDay)+(forDay<todayStr()?"\nThey are filling in this day late, on "+todayStr()+"; times and events refer to "+forDay+".":""), text); }catch(e){}
     const viaClaude = !!(p && typeof p==="object");
     if(!viaClaude) p = localParse(text);
     const id = uid();
     const entry = {kind:"entry", id, createdAt:Date.now(), text,
-      date: /^\d{4}-\d{2}-\d{2}$/.test(p.date||"") ? p.date : todayStr(), mood: p.mood ?? null,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(p.date||"") && p.date <= todayStr() ? p.date : forDay, mood: p.mood ?? null,
       metrics: p.metrics||{}, service: p.service||[], research: p.research||[], notes: p.notes||[], screen: Array.isArray(p.screen) ? p.screen.filter(x=>x && x.app) : [],
       items: (p.items||[]).filter(i=>CATS[i.category]),
       private: $("privChk").checked || (p.items||[]).some(i=>i.category==="private")};
+    if(entry.date < todayStr()) entry.late = true;
     await saveDoc("e_"+id, entry);
     const n = entry.notes.reduce((a,x)=>a+(x.points||[]).length,0);
-    const tmr = viaClaude && Array.isArray(p.tomorrow) ? p.tomorrow.filter(b=>b && b.from && b.to && b.title) : [];
+    const tmr = viaClaude && entry.date===todayStr() && Array.isArray(p.tomorrow) ? p.tomorrow.filter(b=>b && b.from && b.to && b.title) : [];
     if(tmr.length){ const d = addDays(todayStr(),1), ex = (!usingExample && plans[d]) ? plans[d].blocks : [];
       await saveDoc("plan_"+d, {kind:"plan", date:d, blocks:[...ex, ...tmr.map(b=>({...b, id:uid(), quadrant:[1,2,3,4].includes(+b.quadrant)?+b.quadrant:3}))], dictation:(plans[d]?.dictation||""), updatedAt:Date.now()}); }
-    $("logStatus").textContent = !viaClaude ? "Saved as you said it. To have Claude turn it into a sadhana card and notes, add an API key in Settings (gear, top right), or use the claude.ai version." : "Logged. Hare Krishna!"+(n?" Made "+n+" teaching note"+(n===1?"":"s")+", see the Notes tab.":"")+(tmr.length?" Added "+tmr.length+" block"+(tmr.length===1?"":"s")+" to tomorrow's plan.":"")+(p.reflection?"\n\n"+p.reflection:"");
-    $("logInput").value = ""; $("privChk").checked = false;
+    $("logStatus").textContent = !viaClaude ? "Saved as you said it. To have Claude turn it into a sadhana card and notes, add an API key in Settings (gear, top right), or use the claude.ai version." : (entry.late ? "Logged for "+dayLabel(entry.date)+", marked late. Hare Krishna!" : "Logged. Hare Krishna!")+(n?" Made "+n+" teaching note"+(n===1?"":"s")+", see the Notes tab.":"")+(tmr.length?" Added "+tmr.length+" block"+(tmr.length===1?"":"s")+" to tomorrow's plan.":"")+(p.reflection?"\n\n"+p.reflection:"");
+    $("logInput").value = ""; $("privChk").checked = false; setLogDay();
   }catch(e){ $("logStatus").textContent = "Couldn't save that ("+(e.code||e.message)+"). Your text is still in the box."; }
   $("logBtn").disabled = false;
 };
@@ -1167,15 +1179,18 @@ function renderCalendar(){
   $("calMonth").textContent = first.toLocaleDateString(undefined,{month:"long", year:"numeric"});
   const logged = new Set(data().entries.filter(e=>{ const x = e.metrics||{}; return x.wake_time || x.japa_rounds!=null || x.mangala_arati!=null || x.japa_done_time; }).map(e=>e.date));
   const any = new Set(data().entries.map(e=>e.date));
+  const onTime = new Set(data().entries.filter(e=>madeOn(e) <= e.date).map(e=>e.date)), isLate = d => logged.has(d) && !onTime.has(d) && !usingExample;
   let h = ["Mo","Tu","We","Th","Fr","Sa","Su"].map(d=>`<span class="dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
   for(let i=1;i<=n;i++){
     const d = `${y}-${pad(m)}-${pad(i)}`, v = VCAL[d], st = logged.has(d) ? "ok" : (d < today && !usingExample ? "miss" : "");
-    h += `<button class="vday ${st} ${v?"gold":""} ${d===today?"today":""} ${d===calSel?"sel":""}" data-cal="${d}" aria-label="${d}${v?" "+esc(v.e||"")+" "+esc((v.f||[]).join(", ")):""}">${i}${v?.e?`<span class="ek">✦</span>`:v?.f?`<span class="ek">❀</span>`:""}${any.has(d)&&!logged.has(d)?`<span class="dot"></span>`:""}</button>`;
+    h += `<button class="vday ${st} ${isLate(d)?"late":""} ${v?"gold":""} ${d===today?"today":""} ${d===calSel?"sel":""}" data-cal="${d}" aria-label="${d}${v?" "+esc(v.e||"")+" "+esc((v.f||[]).join(", ")):""}">${i}${v?.e?`<span class="ek">✦</span>`:v?.f?`<span class="ek">❀</span>`:""}${any.has(d)&&!logged.has(d)?`<span class="dot"></span>`:""}</button>`;
   }
   $("calGrid").innerHTML = h;
   const v = VCAL[calSel];
-  $("calDay").innerHTML = `<div class="vsel"><span class="label">${dayLabel(calSel)}</span>${v?`<div class="vfest">${v.e?`<div>✦ ${esc(v.e)}</div>`:""}${(v.f||[]).map(f=>`<div>❀ ${esc(f)}</div>`).join("")}</div>`:""}</div>`;
+  const missed = calSel <= today && !logged.has(calSel) && !usingExample;
+  $("calDay").innerHTML = `<div class="vsel"><span class="label">${dayLabel(calSel)}</span>${isLate(calSel)?`<div class="lateNote">Sadhana logged late</div>`:""}${missed?`<div class="row"><button class="link" id="calLogDay">Log sadhana for this day${calSel<today?" (marked late)":""}</button></div>`:""}${v?`<div class="vfest">${v.e?`<div>✦ ${esc(v.e)}</div>`:""}${(v.f||[]).map(f=>`<div>❀ ${esc(f)}</div>`).join("")}</div>`:""}</div>`;
 }
+$("calDay").onclick = e => { if(e.target.id!=="calLogDay") return; setLogDay(calSel); $("tab-today").click(); setTimeout(()=>{ $("logInput").focus(); $("logInput").scrollIntoView({block:"center"}); }, 50); };
 $("calPrev").onclick = () => { const [y,m] = calMonth.split("-").map(Number), d = new Date(y, m-2, 1); calMonth = d.getFullYear()+"-"+pad(d.getMonth()+1); renderCalendar(); };
 $("calNext").onclick = () => { const [y,m] = calMonth.split("-").map(Number), d = new Date(y, m, 1); calMonth = d.getFullYear()+"-"+pad(d.getMonth()+1); renderCalendar(); };
 $("calGrid").onclick = e => { const b = e.target.closest("[data-cal]"); if(!b) return; calSel = b.dataset.cal; renderCalendar(); renderTimeline(); };
@@ -1661,6 +1676,7 @@ function render(){
   renderHero(); renderCard(); renderSnips(); renderPlan(); renderTargets(); renderCharts(); renderLibrary(); renderTimeline(); renderJournal(); renderGita();
 }
 render();
+setLogDay(); $("logDate").onchange = () => setLogDay($("logDate").value);
 initStore();
 loadGita();
 </script>
