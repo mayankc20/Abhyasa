@@ -411,6 +411,7 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
           <label>Wake up by<input type="time" id="t_wake"></label>
           <label>16 rounds done by<input type="time" id="t_japa"></label>
           <label>Mangala arati, days per week<input type="number" id="t_ma" min="0" max="7"></label>
+          <label>SB class, days per week<input type="number" id="t_sb" min="0" max="7"></label>
           <label>Research, hours per week<input type="number" id="t_research" min="0" step="0.5"></label>
           <label>Reading, minutes per day<input type="number" id="t_read" min="0"></label>
           <label>Hearing, minutes per day<input type="number" id="t_hear" min="0"></label>
@@ -646,7 +647,7 @@ When seva overlaps the usual day, move chanting, research and reading around it 
 const routineTxt = () => (routine && routine.text) || DEFAULT_ROUTINE;
 const nowHM = () => { const d = new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); };
 const sleepInfo = () => [0,-1,-2].map(i=>addDays(todayStr(),i)).map(d=>{ const m = {}; data().entries.filter(e=>e.date===d).forEach(e=>{ const x = e.metrics||{}; ["sleep_hours","bed_time","wake_time"].forEach(k=>{ if(x[k]!=null && m[k]==null) m[k] = x[k]; }); }); return {date:d, ...m}; });
-const DEFAULT_TARGETS = {wake_by:"04:30", japa_by:"07:30", mangala_days:7, research_hours:15, reading_min:30, hearing_min:30, calls_hours:4, other:""};
+const DEFAULT_TARGETS = {wake_by:"04:30", japa_by:"07:30", mangala_days:7, sb_days:7, research_hours:15, reading_min:30, hearing_min:30, calls_hours:4, other:""};
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
 const dstr = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -849,7 +850,7 @@ const LOG_INSTR = `You turn one dictated note from a devotee's day (ISKCON-style
 Today is TODAY (YYYY-MM-DD). If the note clearly refers to another day ("yesterday"), set date to that day; otherwise today.
 Return JSON only, with these keys (omit what isn't said; never invent):
 {"date":"YYYY-MM-DD","mood":1-10|null,
- "metrics":{"wake_time":"HH:MM","bed_time":"HH:MM","sleep_hours":n,"mangala_arati":true|false,"japa_rounds":n (total for the day so far),"japa_done_time":"HH:MM" (when the 16 rounds were completed),
+ "metrics":{"wake_time":"HH:MM","bed_time":"HH:MM","sleep_hours":n,"mangala_arati":true|false,"sb_class":true|false (attended the morning Śrīmad-Bhāgavatam class, in person or online),"japa_rounds":n (total for the day so far),"japa_done_time":"HH:MM" (when the 16 rounds were completed),
    "reading_minutes":n,"hearing_minutes":n,"research_minutes":n,"media_minutes":n,"calls_minutes":n (total time on phone calls)},
  "service":[{"what":"...","from":"HH:MM","to":"HH:MM"}],
  "research":[{"topic":"...","minutes":n,"from":"HH:MM","to":"HH:MM","progress":"one line"}],
@@ -880,6 +881,7 @@ function localPlan(text){
 function localParse(text){
   const t = text.toLowerCase(), metrics = {}, items = [];
   const w = t.match(/(?:woke|wake|got up)[^\d]{0,12}(\d{1,2})[:.](\d{2})/); if(w) metrics.wake_time = pad(w[1])+":"+w[2];
+  if(/\bsb class|bhagavatam class|bhagwatam class|bhagavat class/.test(t)) metrics.sb_class = !/(missed|skipped|didn'?t)[^.]{0,20}(sb|bhagavat|bhagwat)/.test(t);
   if(/mang(a)?la?\s*a+rati|mangal\s*a+rti/.test(t)) metrics.mangala_arati = !/(missed|skipped|didn'?t)/.test(t);
   const j = t.match(/(\d{1,2})\s*rounds/); if(j) metrics.japa_rounds = +j[1];
   const r = t.match(/research[^\d]{0,20}(\d+(\.\d+)?)\s*(h|hour)/); if(r) metrics.research_minutes = +r[1]*60;
@@ -896,7 +898,7 @@ async function askJSON(instr, text){
 }
 
 /* ---------- capture ---------- */
-const QUICK_LOG = ["Woke at …","Mangala arati: …","16 rounds done at …","Heard a lecture on …","Read …","Seva from … to …","Research from … to … on …"];
+const QUICK_LOG = ["Woke at …","Mangala arati: …","SB class: attended","16 rounds done at …","Heard a lecture on …","Read …","Seva from … to …","Research from … to … on …"];
 const QUICK_PLAN = ["… to … : … (quadrant 1)","Research block … to …","Seva … to …","Errand at …"];
 function chips(el, list, target){
   $(el).innerHTML = list.map(q=>`<button type="button">${esc(q)}</button>`).join("");
@@ -973,10 +975,11 @@ micFor("logMic","logInput","logStatus"); micFor("planMic","planInput","planStatu
 /* ---------- daily totals ---------- */
 function dayTotals(day){
   const es = data().entries.filter(e=>e.date===day);
-  const m = {wake:null, mangala:null, rounds:null, japaDone:null, reading:0, hearing:0, research:0, media:0, calls:0, service:[], count:es.length};
+  const m = {wake:null, mangala:null, sb:null, rounds:null, japaDone:null, reading:0, hearing:0, research:0, media:0, calls:0, service:[], count:es.length};
   es.forEach(e=>{ const x = e.metrics||{};
     const w = toMin(x.wake_time); if(w!=null) m.wake = m.wake==null ? w : Math.min(m.wake,w);
     if(x.mangala_arati===true) m.mangala = true; else if(x.mangala_arati===false && m.mangala==null) m.mangala = false;
+    if(x.sb_class===true) m.sb = true; else if(x.sb_class===false && m.sb==null) m.sb = false;
     if(x.japa_rounds!=null) m.rounds = Math.max(m.rounds||0, +x.japa_rounds);
     const jd = toMin(x.japa_done_time); if(jd!=null) m.japaDone = m.japaDone==null ? jd : Math.min(m.japaDone,jd);
     m.reading += +x.reading_minutes||0; m.hearing += +x.hearing_minutes||0; m.media += +x.media_minutes||0; m.calls += +x.calls_minutes||0;
@@ -1008,6 +1011,7 @@ function renderCard(){
     `<div class="stat japa">${japaRing(t.rounds, t.japaDone)}<div><span class="label">Japa</span><div class="t">${jOk==null?"target: 16 rounds by "+T.japa_by:pill(jOk,"by "+T.japa_by,"after "+T.japa_by)}</div></div></div>` +
     stat("i-sun","Woke up", fromMin(t.wake), pill(t.wake==null?null:t.wake<=wb,"on time","late"), "target "+T.wake_by) +
     stat("i-lamp","Mangala arati", t.mangala==null?"–":t.mangala?"Attended":"Missed", "", "this week "+weekTotals().mangala+" / "+T.mangala_days) +
+    stat("i-hear","SB class", t.sb==null?"–":t.sb?"Attended":"Missed", "", "this week "+weekTotals().sb+" / "+T.sb_days) +
     stat("i-book","Reading", fmtDur(t.reading), pill(t.reading?t.reading>=T.reading_min:null,"met","short"), "target "+T.reading_min+" min") +
     stat("i-hear","Hearing", fmtDur(t.hearing), pill(t.hearing?t.hearing>=T.hearing_min:null,"met","short"), "target "+T.hearing_min+" min") +
     stat("i-research","Research", fmtDur(t.research), "", "week "+(weekTotals().research/60).toFixed(1)+" / "+T.research_hours+" h");
@@ -1086,7 +1090,7 @@ $("suggestBtn").onclick = async () => {
 Their usual day and rules:
 ${routineTxt()}
 Weekly targets: ${JSON.stringify(tg())}
-Last 7 days (wake, mangala, japaDone, reading, hearing, research minutes): ${JSON.stringify(days)}
+Last 7 days (wake, mangala, sb class, japaDone, reading, hearing, research minutes): ${JSON.stringify(days)}
 This week so far: ${JSON.stringify(weekTotals())}
 Plan for ${planDate()} (quadrant 1 urgent+important, 2 urgent not important, 3 important not urgent, 4 neither): ${JSON.stringify(p?.blocks||[])}
 Give 3-5 concrete, kind suggestions: which targets are slipping, what to move or shorten, how to protect quadrant 3 time (especially research and japa), and what to drop from quadrants 2 and 4. If there's no plan, propose a simple one with times. Plain text, short lines, no headings.`,
@@ -1097,10 +1101,11 @@ Give 3-5 concrete, kind suggestions: which targets are slipping, what to move or
 
 /* ---------- weekly targets ---------- */
 function weekTotals(){
-  const start = weekStart(refDay()), end = refDay(), w = {days:0, mangala:0, wakeOk:0, japaOk:0, research:0, reading:0, hearing:0, calls:0}, T = tg();
+  const start = weekStart(refDay()), end = refDay(), w = {days:0, mangala:0, sb:0, wakeOk:0, japaOk:0, research:0, reading:0, hearing:0, calls:0}, T = tg();
   for(let d = start; d <= end; d = addDays(d,1)){
     const t = dayTotals(d); w.days++;
     if(t.mangala) w.mangala++;
+    if(t.sb) w.sb++;
     if(t.wake!=null && t.wake<=toMin(T.wake_by)) w.wakeOk++;
     if(t.japaDone!=null && t.japaDone<=toMin(T.japa_by)) w.japaOk++;
     w.research += t.research; w.reading += t.reading; w.hearing += t.hearing; w.calls += t.calls;
@@ -1112,6 +1117,7 @@ function renderTargets(){
   const rows = [
     ["Woke by "+T.wake_by, w.wakeOk, 7, w.wakeOk+" / 7 days"],
     ["Mangala arati", w.mangala, +T.mangala_days, w.mangala+" / "+T.mangala_days+" days"],
+    ["Morning SB class", w.sb, +T.sb_days, w.sb+" / "+T.sb_days+" days"],
     ["16 rounds by "+T.japa_by, w.japaOk, 7, w.japaOk+" / 7 days"],
     ["Research", w.research/60, +T.research_hours, (w.research/60).toFixed(1)+" / "+T.research_hours+" h"],
     ["Reading", w.reading, T.reading_min*7, Math.round(w.reading)+" / "+T.reading_min*7+" min"],
@@ -1124,12 +1130,12 @@ function renderTargets(){
     (T.other ? `<div class="hint">Also: ${esc(T.other)}</div>` : "");
 }
 $("editTargets").onclick = () => { const T = tg();
-  $("t_wake").value = T.wake_by; $("t_japa").value = T.japa_by; $("t_ma").value = T.mangala_days; $("t_research").value = T.research_hours;
+  $("t_wake").value = T.wake_by; $("t_japa").value = T.japa_by; $("t_ma").value = T.mangala_days; $("t_sb").value = T.sb_days; $("t_research").value = T.research_hours;
   $("t_read").value = T.reading_min; $("t_hear").value = T.hearing_min; $("t_calls").value = T.calls_hours; $("t_other").value = T.other||"";
   $("targetForm").hidden = false; $("targets").hidden = true; };
 $("cancelTargets").onclick = () => { $("targetForm").hidden = true; $("targets").hidden = false; };
 $("targetForm").onsubmit = async e => { e.preventDefault();
-  const t = {kind:"targets", wake_by:$("t_wake").value||"04:30", japa_by:$("t_japa").value||"07:30", mangala_days:+$("t_ma").value||0,
+  const t = {kind:"targets", wake_by:$("t_wake").value||"04:30", japa_by:$("t_japa").value||"07:30", mangala_days:+$("t_ma").value||0, sb_days:+$("t_sb").value||0,
     research_hours:+$("t_research").value||0, reading_min:+$("t_read").value||0, hearing_min:+$("t_hear").value||0, calls_hours:+$("t_calls").value||0, other:$("t_other").value.trim(), updatedAt:Date.now()};
   try{ await saveDoc("targets", t); $("targetForm").hidden = true; $("targets").hidden = false; }catch(err){ $("logStatus").textContent = "Couldn't save targets."; } };
 
@@ -1151,9 +1157,9 @@ function chart(title, vals, days, opts){
   return `<div class="chart"><div class="row" style="justify-content:space-between"><span class="label">${esc(title)}</span><span class="hint">${opts.note||""}</span></div>${s}</svg></div>`;
 }
 function renderCharts(){
-  const end = refDay(), days = Array.from({length:14},(_,i)=>addDays(end,i-13)), tot = days.map(dayTotals), T = tg(), ma = tot.filter(t=>t.mangala).length;
+  const end = refDay(), days = Array.from({length:14},(_,i)=>addDays(end,i-13)), tot = days.map(dayTotals), T = tg(), ma = tot.filter(t=>t.mangala).length, sbn = tot.filter(t=>t.sb).length;
   $("charts").innerHTML =
-    chart("Woke up", tot.map(t=>t.wake), days, {time:true, target:toMin(T.wake_by), color:"var(--c-sleep)", fmt:fromMin, note:"dashed = "+T.wake_by+" · arati "+ma+"/14"}) +
+    chart("Woke up", tot.map(t=>t.wake), days, {time:true, target:toMin(T.wake_by), color:"var(--c-sleep)", fmt:fromMin, note:"dashed = "+T.wake_by+" · arati "+ma+"/14 · SB "+sbn+"/14"}) +
     chart("16 rounds finished", tot.map(t=>t.japaDone), days, {time:true, target:toMin(T.japa_by), color:"var(--c-spiritual)", fmt:fromMin, note:"dashed = "+T.japa_by}) +
     chart("Research", tot.map(t=>t.research/60), days, {color:"var(--c-research)", fmt:v=>(Math.round(v*10)/10)+"h", note:"hours per day"}) +
     chart("Reading + hearing", tot.map(t=>t.reading+t.hearing), days, {color:"var(--c-thoughts)", fmt:v=>Math.round(v)+"m", note:"minutes per day"});
@@ -1177,7 +1183,7 @@ function renderCalendar(){
   const today = todayStr(); if(!calMonth) calMonth = today.slice(0,7); if(!calSel) calSel = today;
   const [y,m] = calMonth.split("-").map(Number), first = new Date(y, m-1, 1), n = new Date(y, m, 0).getDate(), lead = (first.getDay()+6)%7;
   $("calMonth").textContent = first.toLocaleDateString(undefined,{month:"long", year:"numeric"});
-  const logged = new Set(data().entries.filter(e=>{ const x = e.metrics||{}; return x.wake_time || x.japa_rounds!=null || x.mangala_arati!=null || x.japa_done_time; }).map(e=>e.date));
+  const logged = new Set(data().entries.filter(e=>{ const x = e.metrics||{}; return x.wake_time || x.japa_rounds!=null || x.mangala_arati!=null || x.sb_class!=null || x.japa_done_time; }).map(e=>e.date));
   const any = new Set(data().entries.map(e=>e.date));
   const onTime = new Set(data().entries.filter(e=>madeOn(e) <= e.date).map(e=>e.date)), isLate = d => logged.has(d) && !onTime.has(d) && !usingExample;
   let h = ["Mo","Tu","We","Th","Fr","Sa","Su"].map(d=>`<span class="dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
@@ -1234,7 +1240,7 @@ $("repMake").onclick = async () => {
   const [a,b] = repRange(), days = [];
   for(let d = a; d <= b; d = addDays(d,1)){
     const es = data().entries.filter(e=>e.date===d && !e.private), t = dayTotals(d), pl = data().plans[d];
-    days.push({date:d, wake:t.wake, mangala_arati:t.mangala, rounds:t.rounds, japa_done:t.japaDone, reading_min:t.reading, hearing_min:t.hearing, research_min:t.research, media_min:t.media, calls_min:t.calls,
+    days.push({date:d, wake:t.wake, mangala_arati:t.mangala, sb_class:t.sb, rounds:t.rounds, japa_done:t.japaDone, reading_min:t.reading, hearing_min:t.hearing, research_min:t.research, media_min:t.media, calls_min:t.calls,
       sleep: es.map(e=>e.metrics||{}).filter(m=>m.bed_time||m.sleep_hours).map(m=>({bed:m.bed_time, hours:m.sleep_hours}))[0]||null,
       service: es.flatMap(e=>e.service||[]), research: es.flatMap(e=>e.research||[]).map(r=>({topic:r.topic, minutes:r.minutes, progress:r.progress})),
       heard_read: es.flatMap(e=>e.notes||[]).map(n=>({kind:n.kind, source:n.source, points:n.points})),
@@ -1248,7 +1254,7 @@ $("repMake").onclick = async () => {
     const r = await sample(`Write a weekly sadhana report that an ISKCON devotee will send to their mentors (siksa/diksa guru or counsellor). Week: ${a} to ${b}. Times in the data are minutes after midnight; convert them to clock times.
 Weekly targets: ${JSON.stringify(tg())}
 Daily data (JSON): ${JSON.stringify(days)}
-Format: plain text for a phone message, no markdown symbols. Start with "Hare Krishna. Please accept my humble obeisances. All glories to Śrīla Prabhupāda." and a one-line summary. Then short sections with plain headings on their own line: Sadhana (wake-up, mangala arati days out of 7, 16 rounds and by when, compared with targets), Hearing and reading (sources and 2-3 key realisations), Service, Research and studies (hours and progress), Daily habits (sleep, food, phone calls against the weekly limit, and screen time per app such as WhatsApp and YouTube, split into useful or necessary versus wasted as they marked it), Plan follow-through, Areas to improve, and Resolutions for next week. Be honest and factual, humble, never boastful; say "not recorded" where data is missing; do not invent anything. End with "Your servant," on its own line. Under 350 words.`, {modelTier:"default"});
+Format: plain text for a phone message, no markdown symbols. Start with "Hare Krishna. Please accept my humble obeisances. All glories to Śrīla Prabhupāda." and a one-line summary. Then short sections with plain headings on their own line: Sadhana (wake-up, mangala arati days out of 7, morning Bhagavatam class days out of 7, 16 rounds and by when, compared with targets), Hearing and reading (sources and 2-3 key realisations), Service, Research and studies (hours and progress), Daily habits (sleep, food, phone calls against the weekly limit, and screen time per app such as WhatsApp and YouTube, split into useful or necessary versus wasted as they marked it), Plan follow-through, Areas to improve, and Resolutions for next week. Be honest and factual, humble, never boastful; say "not recorded" where data is missing; do not invent anything. End with "Your servant," on its own line. Under 350 words.`, {modelTier:"default"});
     const text = (r.text||"").trim();
     await saveDoc("report_"+a, {kind:"report", start:a, end:b, text, createdAt:Date.now()});
     reports[a] = {start:a, text, createdAt:Date.now()}; showReport();
