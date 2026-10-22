@@ -407,6 +407,7 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
           <label>Research, hours per week<input type="number" id="t_research" min="0" step="0.5"></label>
           <label>Reading, minutes per day<input type="number" id="t_read" min="0"></label>
           <label>Hearing, minutes per day<input type="number" id="t_hear" min="0"></label>
+          <label>Phone calls, at most hours per week<input type="number" id="t_calls" min="0" step="0.5"></label>
         </div>
         <label class="hint" style="display:flex;flex-direction:column;gap:4px">Other goals this week<textarea id="t_other" style="min-height:60px"></textarea></label>
         <div class="row"><button class="primary" type="submit">Save targets</button><button type="button" id="cancelTargets">Cancel</button></div>
@@ -626,7 +627,7 @@ Rules:
 - Research at least 4 hours a day.
 - Nothing important before breakfast unless it is urgent.
 - Sleep 7 hours. If I slept less than 7 hours last night I may need up to 1 hour of day sleep, but help me avoid it unless it is really needed.
-- About 30 minutes of phone calls a day: give them a slot.
+- Phone calls: at most 4 hours a week, about 30–35 minutes a day. If one day has more, keep the following days shorter.
 
 Seva, when I have it:
 - Kitchen seva 07:00–09:00
@@ -638,7 +639,7 @@ When seva overlaps the usual day, move chanting, research and reading around it 
 const routineTxt = () => (routine && routine.text) || DEFAULT_ROUTINE;
 const nowHM = () => { const d = new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); };
 const sleepInfo = () => [0,-1,-2].map(i=>addDays(todayStr(),i)).map(d=>{ const m = {}; data().entries.filter(e=>e.date===d).forEach(e=>{ const x = e.metrics||{}; ["sleep_hours","bed_time","wake_time"].forEach(k=>{ if(x[k]!=null && m[k]==null) m[k] = x[k]; }); }); return {date:d, ...m}; });
-const DEFAULT_TARGETS = {wake_by:"04:30", japa_by:"07:30", mangala_days:7, research_hours:15, reading_min:30, hearing_min:30, other:""};
+const DEFAULT_TARGETS = {wake_by:"04:30", japa_by:"07:30", mangala_days:7, research_hours:15, reading_min:30, hearing_min:30, calls_hours:4, other:""};
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2,"0");
 const dstr = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -839,7 +840,7 @@ Today is TODAY (YYYY-MM-DD). If the note clearly refers to another day ("yesterd
 Return JSON only, with these keys (omit what isn't said; never invent):
 {"date":"YYYY-MM-DD","mood":1-10|null,
  "metrics":{"wake_time":"HH:MM","bed_time":"HH:MM","sleep_hours":n,"mangala_arati":true|false,"japa_rounds":n (total for the day so far),"japa_done_time":"HH:MM" (when the 16 rounds were completed),
-   "reading_minutes":n,"hearing_minutes":n,"research_minutes":n,"media_minutes":n},
+   "reading_minutes":n,"hearing_minutes":n,"research_minutes":n,"media_minutes":n,"calls_minutes":n (total time on phone calls)},
  "service":[{"what":"...","from":"HH:MM","to":"HH:MM"}],
  "research":[{"topic":"...","minutes":n,"from":"HH:MM","to":"HH:MM","progress":"one line"}],
  "notes":[{"kind":"lecture"|"reading","source":"speaker and/or book, canto/chapter/verse","points":["3-6 faithful, self-contained teaching points in clear sentences, keep verse references and Sanskrit terms"],"quote":"a verse or line quoted verbatim, if dictated"}],
@@ -847,7 +848,7 @@ Return JSON only, with these keys (omit what isn't said; never invent):
  "screen":[{"app":"WhatsApp|YouTube|Instagram|other app name","minutes":n,"use":"useful|necessary|wasted|unclear"}] (phone screen time per app, only if they mention it; "use" only as they judge it, else "unclear"),
  "reflection":"2-3 warm sentences to them about this day: one thing that went well, one gentle suggestion",
  "tomorrow":[{"from":"HH:MM","to":"HH:MM","title":"short","quadrant":1-4}] (only if they say what they will do tomorrow)}
-The dictation may be rough, rambling and cover the whole day in any order: sort it all out. Food, sleep and YouTube or other media go in items (and media_minutes).
+The dictation may be rough, rambling and cover the whole day in any order: sort it all out. Food, sleep and YouTube or other media go in items (and media_minutes). Phone calls go in calls_minutes.
 They often speak a mix of Hindi and English (Devanagari or Roman script, with voice-typing errors): understand it fully and write everything in clear English, keeping Sanskrit and devotional terms. Use 24-hour times. "Mangala arati" may be spelled mangal/mangla aarti. Research minutes = total research time stated or computed from times.`;
 const PLAN_INSTR = `You turn a dictated day plan into time blocks. The plan is for DATE.
 They may speak a mix of Hindi and English; write block titles in short, clear English.
@@ -921,7 +922,7 @@ $("planBtn").onclick = async () => {
   $("planBtn").disabled = true; $("planStatus").textContent = "Laying out the plan…";
   try{
     const forToday = planFor==="today", date = forToday ? todayStr() : addDays(todayStr(),1);
-    let p = null; try{ p = await askJSON(PLAN_INSTR.replace("DATE",date)+"\nTheir usual day and rules:\n"+routineTxt()+"\nRecent sleep: "+JSON.stringify(sleepInfo())+(forToday ? "\nThis is a re-plan of TODAY. It is now "+nowHM()+". Keep blocks already marked done as they are, arrange only from now until bedtime, and fit in what is still due today (rounds left, research hours left). Logged today so far: "+JSON.stringify(dayTotals(todayStr())) : "")+"\nWeekly targets: "+JSON.stringify(tg())+"\nLast 7 days: "+JSON.stringify(Array.from({length:7},(_,i)=>addDays(todayStr(),i-6)).map(d=>({date:d, ...dayTotals(d)})))+"\nExisting plan for that day: "+JSON.stringify((!usingExample && plans[date]?.blocks||[]).map(({id,...b})=>b)), text); }catch(e){}
+    let p = null; try{ p = await askJSON(PLAN_INSTR.replace("DATE",date)+"\nTheir usual day and rules:\n"+routineTxt()+"\nRecent sleep: "+JSON.stringify(sleepInfo())+"\nThis week so far (minutes; calls limit is calls_hours a week, so balance what is left over the remaining days): "+JSON.stringify(weekTotals())+(forToday ? "\nThis is a re-plan of TODAY. It is now "+nowHM()+". Keep blocks already marked done as they are, arrange only from now until bedtime, and fit in what is still due today (rounds left, research hours left). Logged today so far: "+JSON.stringify(dayTotals(todayStr())) : "")+"\nWeekly targets: "+JSON.stringify(tg())+"\nLast 7 days: "+JSON.stringify(Array.from({length:7},(_,i)=>addDays(todayStr(),i-6)).map(d=>({date:d, ...dayTotals(d)})))+"\nExisting plan for that day: "+JSON.stringify((!usingExample && plans[date]?.blocks||[]).map(({id,...b})=>b)), text); }catch(e){}
     if(!p || !Array.isArray(p.blocks)) p = localPlan(text);
     if(!p){ $("planStatus").textContent = "Write one block per line with times, like \"9:00 to 10:30 research (quadrant 3)\". With a Claude API key in Settings you can just speak it."; }
     else {
@@ -960,13 +961,13 @@ micFor("logMic","logInput","logStatus"); micFor("planMic","planInput","planStatu
 /* ---------- daily totals ---------- */
 function dayTotals(day){
   const es = data().entries.filter(e=>e.date===day);
-  const m = {wake:null, mangala:null, rounds:null, japaDone:null, reading:0, hearing:0, research:0, media:0, service:[], count:es.length};
+  const m = {wake:null, mangala:null, rounds:null, japaDone:null, reading:0, hearing:0, research:0, media:0, calls:0, service:[], count:es.length};
   es.forEach(e=>{ const x = e.metrics||{};
     const w = toMin(x.wake_time); if(w!=null) m.wake = m.wake==null ? w : Math.min(m.wake,w);
     if(x.mangala_arati===true) m.mangala = true; else if(x.mangala_arati===false && m.mangala==null) m.mangala = false;
     if(x.japa_rounds!=null) m.rounds = Math.max(m.rounds||0, +x.japa_rounds);
     const jd = toMin(x.japa_done_time); if(jd!=null) m.japaDone = m.japaDone==null ? jd : Math.min(m.japaDone,jd);
-    m.reading += +x.reading_minutes||0; m.hearing += +x.hearing_minutes||0; m.media += +x.media_minutes||0;
+    m.reading += +x.reading_minutes||0; m.hearing += +x.hearing_minutes||0; m.media += +x.media_minutes||0; m.calls += +x.calls_minutes||0;
     let r = +x.research_minutes||0; if(!r) r = (e.research||[]).reduce((a,b)=>a+(+b.minutes||0),0); m.research += r;
     (e.service||[]).forEach(s=>m.service.push(s));
   });
@@ -1084,13 +1085,13 @@ Give 3-5 concrete, kind suggestions: which targets are slipping, what to move or
 
 /* ---------- weekly targets ---------- */
 function weekTotals(){
-  const start = weekStart(refDay()), end = refDay(), w = {days:0, mangala:0, wakeOk:0, japaOk:0, research:0, reading:0, hearing:0}, T = tg();
+  const start = weekStart(refDay()), end = refDay(), w = {days:0, mangala:0, wakeOk:0, japaOk:0, research:0, reading:0, hearing:0, calls:0}, T = tg();
   for(let d = start; d <= end; d = addDays(d,1)){
     const t = dayTotals(d); w.days++;
     if(t.mangala) w.mangala++;
     if(t.wake!=null && t.wake<=toMin(T.wake_by)) w.wakeOk++;
     if(t.japaDone!=null && t.japaDone<=toMin(T.japa_by)) w.japaOk++;
-    w.research += t.research; w.reading += t.reading; w.hearing += t.hearing;
+    w.research += t.research; w.reading += t.reading; w.hearing += t.hearing; w.calls += t.calls;
   }
   return w;
 }
@@ -1102,21 +1103,22 @@ function renderTargets(){
     ["16 rounds by "+T.japa_by, w.japaOk, 7, w.japaOk+" / 7 days"],
     ["Research", w.research/60, +T.research_hours, (w.research/60).toFixed(1)+" / "+T.research_hours+" h"],
     ["Reading", w.reading, T.reading_min*7, Math.round(w.reading)+" / "+T.reading_min*7+" min"],
-    ["Hearing", w.hearing, T.hearing_min*7, Math.round(w.hearing)+" / "+T.hearing_min*7+" min"]
+    ["Hearing", w.hearing, T.hearing_min*7, Math.round(w.hearing)+" / "+T.hearing_min*7+" min"],
+    ["Phone calls (limit)", w.calls/60, +T.calls_hours, (w.calls/60).toFixed(1)+" / "+T.calls_hours+" h", true]
   ];
   $("targets").innerHTML = `<span class="hint">Week from ${dayLabel(weekStart(refDay()))} · day ${w.days} of 7 · green is on pace${targets?"":" · these are default targets"}</span>` +
-    rows.map(r=>{ const pct = r[2] ? Math.min(1, r[1]/r[2]) : 0, behind = pct < pace*0.85;
+    rows.map(r=>{ const pct = r[2] ? Math.min(1, r[1]/r[2]) : 0, behind = r[4] ? r[1] > r[2]*pace : pct < pace*0.85;
       return `<div class="trow"><span>${esc(r[0])}</span><div class="bar"><span style="width:${pct*100}%;background:${behind?"var(--warn)":"var(--good)"}"></span></div><span class="hint" style="font-variant-numeric:tabular-nums">${r[3]}</span></div>`; }).join("") +
     (T.other ? `<div class="hint">Also: ${esc(T.other)}</div>` : "");
 }
 $("editTargets").onclick = () => { const T = tg();
   $("t_wake").value = T.wake_by; $("t_japa").value = T.japa_by; $("t_ma").value = T.mangala_days; $("t_research").value = T.research_hours;
-  $("t_read").value = T.reading_min; $("t_hear").value = T.hearing_min; $("t_other").value = T.other||"";
+  $("t_read").value = T.reading_min; $("t_hear").value = T.hearing_min; $("t_calls").value = T.calls_hours; $("t_other").value = T.other||"";
   $("targetForm").hidden = false; $("targets").hidden = true; };
 $("cancelTargets").onclick = () => { $("targetForm").hidden = true; $("targets").hidden = false; };
 $("targetForm").onsubmit = async e => { e.preventDefault();
   const t = {kind:"targets", wake_by:$("t_wake").value||"04:30", japa_by:$("t_japa").value||"07:30", mangala_days:+$("t_ma").value||0,
-    research_hours:+$("t_research").value||0, reading_min:+$("t_read").value||0, hearing_min:+$("t_hear").value||0, other:$("t_other").value.trim(), updatedAt:Date.now()};
+    research_hours:+$("t_research").value||0, reading_min:+$("t_read").value||0, hearing_min:+$("t_hear").value||0, calls_hours:+$("t_calls").value||0, other:$("t_other").value.trim(), updatedAt:Date.now()};
   try{ await saveDoc("targets", t); $("targetForm").hidden = true; $("targets").hidden = false; }catch(err){ $("logStatus").textContent = "Couldn't save targets."; } };
 
 /* ---------- charts ---------- */
@@ -1217,7 +1219,7 @@ $("repMake").onclick = async () => {
   const [a,b] = repRange(), days = [];
   for(let d = a; d <= b; d = addDays(d,1)){
     const es = data().entries.filter(e=>e.date===d && !e.private), t = dayTotals(d), pl = data().plans[d];
-    days.push({date:d, wake:t.wake, mangala_arati:t.mangala, rounds:t.rounds, japa_done:t.japaDone, reading_min:t.reading, hearing_min:t.hearing, research_min:t.research, media_min:t.media,
+    days.push({date:d, wake:t.wake, mangala_arati:t.mangala, rounds:t.rounds, japa_done:t.japaDone, reading_min:t.reading, hearing_min:t.hearing, research_min:t.research, media_min:t.media, calls_min:t.calls,
       sleep: es.map(e=>e.metrics||{}).filter(m=>m.bed_time||m.sleep_hours).map(m=>({bed:m.bed_time, hours:m.sleep_hours}))[0]||null,
       service: es.flatMap(e=>e.service||[]), research: es.flatMap(e=>e.research||[]).map(r=>({topic:r.topic, minutes:r.minutes, progress:r.progress})),
       heard_read: es.flatMap(e=>e.notes||[]).map(n=>({kind:n.kind, source:n.source, points:n.points})),
@@ -1231,7 +1233,7 @@ $("repMake").onclick = async () => {
     const r = await sample(`Write a weekly sadhana report that an ISKCON devotee will send to their mentors (siksa/diksa guru or counsellor). Week: ${a} to ${b}. Times in the data are minutes after midnight; convert them to clock times.
 Weekly targets: ${JSON.stringify(tg())}
 Daily data (JSON): ${JSON.stringify(days)}
-Format: plain text for a phone message, no markdown symbols. Start with "Hare Krishna. Please accept my humble obeisances. All glories to Śrīla Prabhupāda." and a one-line summary. Then short sections with plain headings on their own line: Sadhana (wake-up, mangala arati days out of 7, 16 rounds and by when, compared with targets), Hearing and reading (sources and 2-3 key realisations), Service, Research and studies (hours and progress), Daily habits (sleep, food, and screen time per app such as WhatsApp and YouTube, split into useful or necessary versus wasted as they marked it), Plan follow-through, Areas to improve, and Resolutions for next week. Be honest and factual, humble, never boastful; say "not recorded" where data is missing; do not invent anything. End with "Your servant," on its own line. Under 350 words.`, {modelTier:"default"});
+Format: plain text for a phone message, no markdown symbols. Start with "Hare Krishna. Please accept my humble obeisances. All glories to Śrīla Prabhupāda." and a one-line summary. Then short sections with plain headings on their own line: Sadhana (wake-up, mangala arati days out of 7, 16 rounds and by when, compared with targets), Hearing and reading (sources and 2-3 key realisations), Service, Research and studies (hours and progress), Daily habits (sleep, food, phone calls against the weekly limit, and screen time per app such as WhatsApp and YouTube, split into useful or necessary versus wasted as they marked it), Plan follow-through, Areas to improve, and Resolutions for next week. Be honest and factual, humble, never boastful; say "not recorded" where data is missing; do not invent anything. End with "Your servant," on its own line. Under 350 words.`, {modelTier:"default"});
     const text = (r.text||"").trim();
     await saveDoc("report_"+a, {kind:"report", start:a, end:b, text, createdAt:Date.now()});
     reports[a] = {start:a, text, createdAt:Date.now()}; showReport();
