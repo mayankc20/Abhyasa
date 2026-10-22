@@ -273,6 +273,25 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
 .vday.ok.late.gold{border-color:var(--warn);box-shadow:0 0 0 2.5px var(--gold),0 0 10px -2px var(--gold)}
 .vkey .k.late{background:color-mix(in srgb,var(--good) 22%,var(--surface));border:2px solid var(--warn)}
 .vsel .lateNote{color:var(--warn);font-size:.85rem}
+/* immersive pictures: big, temple-doorway arches, slow drift */
+@keyframes drift{from{transform:scale(1.04) translate3d(0,0,0)}to{transform:scale(1.14) translate3d(-1.5%,-1%,0)}}
+.hero,.scene{border:none;border-radius:50% 50% 26px 26px / 110px 110px 26px 26px;box-shadow:0 22px 40px -26px rgba(60,20,120,.55),0 0 0 1px color-mix(in srgb,var(--gold) 35%,transparent)}
+.hero{min-height:clamp(420px,68vh,640px)}
+.hero img.photo{animation:drift 28s ease-in-out infinite alternate}
+.hero .shade{background:linear-gradient(180deg,rgba(20,10,40,.15) 0%,rgba(20,10,40,0) 30%,rgba(20,10,40,.25) 55%,rgba(20,10,40,.85))}
+.hero .copy{padding:24px 24px 28px;text-shadow:0 2px 12px rgba(0,0,0,.45)}
+.hero .greet{font-size:clamp(2.2rem,8vw,3rem)}
+.hero .tools{top:auto;bottom:auto;top:54%;right:12px;flex-direction:column;align-items:flex-end}
+.scene{background:var(--surface);min-height:clamp(300px,48vh,440px)}
+.scene::after{content:"";position:absolute;inset:0;background:var(--img) var(--pos,50% 40%)/cover;animation:drift 32s ease-in-out infinite alternate;z-index:0}
+.scene::before{z-index:1;background:linear-gradient(180deg,rgba(20,10,40,0) 45%,rgba(20,10,40,.8))}
+.scene p{z-index:2;padding:20px 22px 24px;font-size:1.25rem;text-shadow:0 2px 10px rgba(0,0,0,.45)}
+@media (max-width:720px){
+  .hero,.scene{margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));border-radius:50% 50% 30px 30px / 70px 70px 30px 30px}
+  .hero{min-height:72vh}
+  .scene{min-height:46vh}
+}
+@media (prefers-reduced-motion:reduce){.hero img.photo,.scene::after{animation:none}}
 </style>
 </head>
 <body>
@@ -319,7 +338,7 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
       <div class="tools">
         <button id="prevPhoto" hidden aria-label="Previous photo">‹</button>
         <button id="nextPhoto" hidden aria-label="Next photo">›</button>
-        <button id="addPhoto" hidden>Add darshan photos</button>
+        <button id="addPhoto" hidden>Add today's darshan</button>
         <button id="rmPhoto" hidden>Remove</button>
       </div>
       <input type="file" id="photoInput" accept="image/*" multiple hidden>
@@ -805,14 +824,25 @@ const BUILTIN = [
   {src:"img/ordinary-boy.jpg", pos:"45% 22%", alt:"Krishna plays like an ordinary boy"},
   {src:"img/baka.jpg", pos:"55% 30%", alt:"Krishna confronts the Baka demon"}];
 function photoIds(){ return photos?.ids || []; }
-function heroList(){ return [...BUILTIN, ...photoIds().map(id=>({id, src:blobSrc(id), pos:"50% 35%", alt:"Darshan"}))]; }
-function currentPhoto(){ const L = heroList(), n = L.length; return L[((Math.floor(Date.now()/864e5) + photoIdx) % n + n) % n]; }
+const todaysDarshan = () => photoIds().filter(id=>(photos?.added||{})[id]===todayStr()).reverse();
+function heroList(){ const t = todaysDarshan(); return [...t.map(id=>({id, src:blobSrc(id), pos:"50% 30%", alt:"Today's darshan"})), ...BUILTIN, ...photoIds().filter(id=>!t.includes(id)).map(id=>({id, src:blobSrc(id), pos:"50% 35%", alt:"Darshan"}))]; }
+function currentPhoto(){ const L = heroList(), n = L.length, base = todaysDarshan().length ? 0 : Math.floor(Date.now()/864e5); return L[((base + photoIdx) % n + n) % n]; }
+function renderScenes(){ // today's darshan photos also fill the pictures at the top of the other tabs
+  const t = todaysDarshan();
+  document.querySelectorAll(".scene").forEach((el,i)=>{
+    if(!el.dataset.img) el.dataset.img = el.style.getPropertyValue("--img")+"|"+el.style.getPropertyValue("--pos");
+    const id = t.length > 1 ? t[1 + i % (t.length-1)] : t[0];
+    const [img,pos] = el.dataset.img.split("|");
+    el.style.setProperty("--img", id ? `url("${blobSrc(id)}")` : img); el.style.setProperty("--pos", id ? "50% 30%" : pos);
+  });
+}
 $("heroImg").onerror = () => { $("heroImg").hidden = true; $("heroArt").style.opacity = 1; };
 function renderHero(){
   const ph = currentPhoto();
   $("heroImg").hidden = false; $("heroImg").src = ph.src; $("heroImg").style.objectPosition = ph.pos; $("heroImg").alt = ph.alt; $("heroArt").style.opacity = 0;
   $("prevPhoto").hidden = $("nextPhoto").hidden = heroList().length < 2;
   $("rmPhoto").hidden = !ph.id || !assets;
+  renderScenes();
   const s = snippetPool();
   const pick = s.length ? s[Math.floor(seeded(todayStr()+"hero")()*s.length)] : null;
   $("heroVerse").textContent = pick ? "“"+pick.p+"”  · "+(pick.src||"") : "Keep a record of your sadhana, service and study, and let the teachings come back to you.";
@@ -834,10 +864,10 @@ $("photoInput").onchange = async e => {
   const files = [...e.target.files]; e.target.value = "";
   if(!files.length || !assets) return;
   $("addPhoto").disabled = true; $("addPhoto").textContent = "Adding…";
-  const ids = photoIds().slice();
-  for(const f of files){ try{ const r = await assets.upload(await shrink(f)); ids.push(r.id); }catch(err){ $("logStatus").textContent = "One photo couldn't be added ("+(err.code||err.message)+"). JPEG or PNG works best."; } }
-  try{ await saveDoc("photos", {kind:"photos", ids, updatedAt:Date.now()}); const n = BUILTIN.length+ids.length; photoIdx = (BUILTIN.length+ids.length-1) - (Math.floor(Date.now()/864e5)%n); }catch(err){}
-  $("addPhoto").disabled = false; $("addPhoto").textContent = "Add darshan photos";
+  const ids = photoIds().slice(), added = {...(photos?.added||{})};
+  for(const f of files){ try{ const r = await assets.upload(await shrink(f)); ids.push(r.id); added[r.id] = todayStr(); }catch(err){ $("logStatus").textContent = "One photo couldn't be added ("+(err.code||err.message)+"). JPEG or PNG works best."; } }
+  try{ await saveDoc("photos", {kind:"photos", ids, added, updatedAt:Date.now()}); photoIdx = 0; }catch(err){}
+  $("addPhoto").disabled = false; $("addPhoto").textContent = "Add today's darshan";
   renderHero();
 };
 let rmArmed = false;
@@ -845,7 +875,7 @@ $("rmPhoto").onclick = async () => {
   if(!rmArmed){ rmArmed = true; $("rmPhoto").textContent = "Tap again to remove"; setTimeout(()=>{ rmArmed=false; $("rmPhoto").textContent="Remove"; },4000); return; }
   rmArmed = false; $("rmPhoto").textContent = "Remove";
   const ids = photoIds(), id = currentPhoto().id; if(!id) return;
-  try{ await saveDoc("photos", {kind:"photos", ids: ids.filter(x=>x!==id), updatedAt:Date.now()}); await assets.delete(id); }catch(e){}
+  try{ const added = {...(photos?.added||{})}; delete added[id]; await saveDoc("photos", {kind:"photos", ids: ids.filter(x=>x!==id), added, updatedAt:Date.now()}); await assets.delete(id); }catch(e){}
   renderHero();
 };
 

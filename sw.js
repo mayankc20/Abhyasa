@@ -1,6 +1,6 @@
 /* Offline support: the app shell and pictures come from the cache, and each visit
    checks for a newer version in the background so updates arrive on the next open. */
-const VERSION = "abhyasa-v24";
+const VERSION = "abhyasa-v25";
 const SHELL = ["./", "index.html", "platform.js", "manifest.webmanifest", "gita.json", "vendor/anthropic.mjs",
   "icons/icon-192.png", "icons/logo-128.png", "img/krishna-arjuna.jpg", "icons/icon-512.png", "icons/apple-touch-icon.png",
   "img/baby-krsna.jpg", "img/cowherd-lunch.jpg", "img/vrindavan-forest.jpg", "img/damodara.jpg",
