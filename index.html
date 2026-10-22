@@ -863,20 +863,24 @@ const BUILTIN = [
   {src:"img/ordinary-boy.jpg", pos:"45% 22%", alt:"Krishna plays like an ordinary boy"},
   {src:"img/baka.jpg", pos:"55% 30%", alt:"Krishna confronts the Baka demon"}];
 function photoIds(){ return photos?.ids || []; }
-const todaysDarshan = () => photoIds().filter(id=>(photos?.added||{})[id]===todayStr()).reverse();
-function heroList(){ const t = todaysDarshan(); return [...t.map(id=>({id, src:blobSrc(id), pos:"50% 30%", alt:"Today's darshan"})), ...BUILTIN, ...photoIds().filter(id=>!t.includes(id)).map(id=>({id, src:blobSrc(id), pos:"50% 35%", alt:"Darshan"}))]; }
+// the latest day's darshan photos (today's once they arrive, else the most recent day's)
+const todaysDarshan = () => { const ad = photos?.added||{}, ds = photoIds().map(id=>ad[id]).filter(Boolean).sort(), last = ds[ds.length-1];
+  return last ? photoIds().filter(id=>ad[id]===last).reverse() : []; };
+function heroList(){ const t = todaysDarshan(); if(t.length) return t.map(id=>({id, src:blobSrc(id), pos:"50% 30%", alt:"Today's darshan"})); return [...BUILTIN, ...photoIds().filter(id=>!t.includes(id)).map(id=>({id, src:blobSrc(id), pos:"50% 35%", alt:"Darshan"}))]; }
 function currentPhoto(){ const L = heroList(), n = L.length, base = todaysDarshan().length ? 0 : Math.floor(Date.now()/864e5); return L[((base + photoIdx) % n + n) % n]; }
 const urlOf = v => (String(v).match(/url\(["']?([^"')]+)["']?\)/)||[])[1] || "";
 function renderScenes(){ // today's darshan photos also fill the pictures at the top of the other tabs
   const t = todaysDarshan();
   document.querySelectorAll(".scene").forEach((el,i)=>{
     if(!el.dataset.img) el.dataset.img = el.style.getPropertyValue("--img")+"|"+el.style.getPropertyValue("--pos");
-    const id = t.length > 1 ? t[1 + i % (t.length-1)] : t[0];
+    const id = t.length ? t[(i+1) % t.length] : null;
     const [img,pos] = el.dataset.img.split("|");
     el.style.setProperty("--img", id ? `url("${blobSrc(id)}")` : img); el.style.setProperty("--pos", id ? "50% 30%" : pos);
     let pic = el.querySelector("img.pic"); if(!pic){ pic = document.createElement("img"); pic.className = "pic"; pic.alt = ""; el.prepend(pic); }
     const src = id ? blobSrc(id) : urlOf(img); if(pic.getAttribute("src")!==src) pic.src = src;
   });
+  const lid = t.length ? t[(document.querySelectorAll(".scene").length+1) % t.length] : null;
+  document.querySelectorAll(".lockpanel").forEach(el=>{ el.style.backgroundImage = lid ? `linear-gradient(rgba(20,10,30,.62),rgba(20,10,30,.86)),url("${blobSrc(lid)}")` : ""; el.style.backgroundPosition = lid ? "center 30%" : ""; });
 }
 $("heroImg").onerror = () => { $("heroImg").hidden = true; $("heroArt").style.opacity = 1; };
 function renderHero(){
