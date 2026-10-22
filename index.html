@@ -246,6 +246,24 @@ button.use.u-useful{background:color-mix(in srgb,var(--good) 18%,transparent);co
 button.use.u-necessary{background:var(--accent-soft);color:var(--accent)}
 button.use.u-wasted{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
 button.use.u-unclear{background:var(--line);color:var(--muted)}
+.vcal .head{justify-content:space-between}
+.vcal .head .link{font-size:1.6rem;padding:0 10px;line-height:1}
+.vmonth{font-family:var(--display);font-weight:700;font-size:1.2rem}
+.vgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.vgrid .dow{text-align:center;font-size:.72rem;color:var(--muted);font-weight:600}
+.vday{position:relative;aspect-ratio:1;padding:0;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);font-weight:600;font-size:.95rem;display:grid;place-items:center}
+.vday.ok{background:color-mix(in srgb,var(--good) 22%,var(--surface));border-color:color-mix(in srgb,var(--good) 45%,transparent);color:var(--good)}
+.vday.miss{background:color-mix(in srgb,var(--warn) 16%,var(--surface));border-color:color-mix(in srgb,var(--warn) 35%,transparent);color:var(--warn)}
+.vday.gold{border:2.5px solid var(--gold);box-shadow:0 0 0 2px color-mix(in srgb,var(--gold) 25%,transparent),0 0 10px -2px var(--gold)}
+.vday.today{outline:2px solid var(--saffron);outline-offset:1px}
+.vday.sel{transform:scale(1.06);box-shadow:0 4px 14px -6px var(--saffron)}
+.vday .ek{position:absolute;top:1px;right:4px;font-size:.62rem;color:var(--gold)}
+.vday .dot{position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;background:var(--muted)}
+.vkey{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.vkey .k{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-1px}
+.vkey .k.ok{background:color-mix(in srgb,var(--good) 40%,transparent)}.vkey .k.miss{background:color-mix(in srgb,var(--warn) 35%,transparent)}.vkey .k.gold{border:2px solid var(--gold)}
+.vsel{display:flex;flex-direction:column;gap:6px}
+.vfest{background:var(--gold-soft);border:1.5px solid var(--gold);border-radius:14px;padding:10px 14px;font-weight:600;display:flex;flex-direction:column;gap:2px}
 </style>
 </head>
 <body>
@@ -419,6 +437,12 @@ button.use.u-unclear{background:var(--line);color:var(--muted)}
     </section>
     <section aria-labelledby="tlH">
       <h2 id="tlH"><svg class="lotus"><use href="#i-lotus"/></svg>Daily log</h2>
+      <div class="panel vcal">
+        <div class="head"><button class="link" id="calPrev" aria-label="Previous month">‹</button><span class="vmonth" id="calMonth"></span><button class="link" id="calNext" aria-label="Next month">›</button></div>
+        <div class="vgrid" id="calGrid"></div>
+        <div class="vkey"><span><i class="k ok"></i>Sadhana logged</span><span><i class="k miss"></i>Not logged</span><span><i class="k gold"></i>Ekādaśī or festival</span></div>
+      </div>
+      <div id="calDay"></div>
       <div id="timeline"></div>
     </section>
   </div>
@@ -1074,12 +1098,34 @@ function renderLibrary(){
 }
 $("libSearch").oninput = renderLibrary;
 const revealed = new Set(), pendingDelete = new Set();
+/* Vaishnava calendar for Śrī Māyāpur, computed ahead of time (sunrise tithi; Ekādaśī moves to Dvādaśī when Daśamī touches aruṇodaya) */
+const VCAL = {"2026-09-04":{"f":["Śrī Kṛṣṇa Janmāṣṭamī"]},"2026-09-05":{"f":["Nandotsava · Śrīla Prabhupāda Vyāsa-pūjā"]},"2026-09-07":{"e":"Ekādaśī"},"2026-09-19":{"f":["Rādhāṣṭamī"]},"2026-09-22":{"e":"Pārśva Ekādaśī"},"2026-10-06":{"e":"Ekādaśī"},"2026-10-22":{"e":"Pāśāṅkuśā Ekādaśī"},"2026-10-26":{"f":["Kārtika (Dāmodara) month begins"]},"2026-11-05":{"e":"Ekādaśī"},"2026-11-09":{"f":["Dīpāvalī"]},"2026-11-10":{"f":["Govardhana-pūjā"]},"2026-11-13":{"f":["Śrīla Prabhupāda disappearance"]},"2026-11-21":{"e":"Utthāna Ekādaśī"},"2026-11-24":{"f":["Kārtika ends · Rāsa-yātrā"]},"2026-12-04":{"e":"Ekādaśī"},"2026-12-20":{"e":"Mokṣadā Ekādaśī","f":["Gītā-jayantī"]},"2027-01-03":{"e":"Ekādaśī"},"2027-01-19":{"e":"Putradā Ekādaśī"},"2027-02-02":{"e":"Ekādaśī"},"2027-02-11":{"f":["Vasanta-pañcamī"]},"2027-02-13":{"f":["Advaita Saptamī"]},"2027-02-17":{"e":"Bhaimī Ekādaśī"},"2027-02-19":{"f":["Nityānanda Trayodaśī"]},"2027-03-04":{"e":"Ekādaśī"},"2027-03-19":{"e":"Āmalakī-vrata Ekādaśī (fast on Dvādaśī)"},"2027-03-22":{"f":["Gaura Pūrṇimā"]},"2027-04-02":{"e":"Ekādaśī"},"2027-04-15":{"f":["Rāma-navamī"]},"2027-04-17":{"e":"Kāmadā Ekādaśī"},"2027-05-02":{"e":"Ekādaśī"},"2027-05-16":{"e":"Mohinī Ekādaśī"},"2027-05-19":{"f":["Śrī Nṛsiṁha Caturdaśī"]},"2027-06-01":{"e":"Ekādaśī"},"2027-06-14":{"e":"Pāṇḍava Nirjalā Ekādaśī"},"2027-06-30":{"e":"Ekādaśī"},"2027-07-05":{"f":["Ratha-yātrā"]},"2027-07-14":{"e":"Śayana Ekādaśī"},"2027-07-30":{"e":"Ekādaśī"},"2027-08-12":{"e":"Pavitrāropaṇī Ekādaśī"},"2027-08-17":{"f":["Balarāma Pūrṇimā"]},"2027-08-25":{"f":["Śrī Kṛṣṇa Janmāṣṭamī"]},"2027-08-26":{"f":["Nandotsava · Śrīla Prabhupāda Vyāsa-pūjā"]},"2027-08-28":{"e":"Ekādaśī"},"2027-09-08":{"f":["Rādhāṣṭamī"]},"2027-09-11":{"e":"Pārśva Ekādaśī"},"2027-09-26":{"e":"Ekādaśī"},"2027-10-11":{"e":"Pāśāṅkuśā Ekādaśī"},"2027-10-15":{"f":["Kārtika (Dāmodara) month begins"]},"2027-10-26":{"e":"Ekādaśī (fast on Dvādaśī)"},"2027-10-29":{"f":["Dīpāvalī"]},"2027-10-30":{"f":["Govardhana-pūjā"]},"2027-11-02":{"f":["Śrīla Prabhupāda disappearance"]},"2027-11-10":{"e":"Utthāna Ekādaśī"},"2027-11-14":{"f":["Kārtika ends · Rāsa-yātrā"]},"2027-11-24":{"e":"Ekādaśī"},"2027-12-09":{"e":"Mokṣadā Ekādaśī","f":["Gītā-jayantī"]},"2027-12-23":{"e":"Ekādaśī"}};
+let calMonth = null, calSel = null;
+function renderCalendar(){
+  const today = todayStr(); if(!calMonth) calMonth = today.slice(0,7); if(!calSel) calSel = today;
+  const [y,m] = calMonth.split("-").map(Number), first = new Date(y, m-1, 1), n = new Date(y, m, 0).getDate(), lead = (first.getDay()+6)%7;
+  $("calMonth").textContent = first.toLocaleDateString(undefined,{month:"long", year:"numeric"});
+  const logged = new Set(data().entries.filter(e=>{ const x = e.metrics||{}; return x.wake_time || x.japa_rounds!=null || x.mangala_arati!=null || x.japa_done_time; }).map(e=>e.date));
+  const any = new Set(data().entries.map(e=>e.date));
+  let h = ["Mo","Tu","We","Th","Fr","Sa","Su"].map(d=>`<span class="dow">${d}</span>`).join("") + "<span></span>".repeat(lead);
+  for(let i=1;i<=n;i++){
+    const d = `${y}-${pad(m)}-${pad(i)}`, v = VCAL[d], st = logged.has(d) ? "ok" : (d < today && !usingExample ? "miss" : "");
+    h += `<button class="vday ${st} ${v?"gold":""} ${d===today?"today":""} ${d===calSel?"sel":""}" data-cal="${d}" aria-label="${d}${v?" "+esc(v.e||"")+" "+esc((v.f||[]).join(", ")):""}">${i}${v?.e?`<span class="ek">✦</span>`:v?.f?`<span class="ek">❀</span>`:""}${any.has(d)&&!logged.has(d)?`<span class="dot"></span>`:""}</button>`;
+  }
+  $("calGrid").innerHTML = h;
+  const v = VCAL[calSel];
+  $("calDay").innerHTML = `<div class="vsel"><span class="label">${dayLabel(calSel)}</span>${v?`<div class="vfest">${v.e?`<div>✦ ${esc(v.e)}</div>`:""}${(v.f||[]).map(f=>`<div>❀ ${esc(f)}</div>`).join("")}</div>`:""}</div>`;
+}
+$("calPrev").onclick = () => { const [y,m] = calMonth.split("-").map(Number), d = new Date(y, m-2, 1); calMonth = d.getFullYear()+"-"+pad(d.getMonth()+1); renderCalendar(); };
+$("calNext").onclick = () => { const [y,m] = calMonth.split("-").map(Number), d = new Date(y, m, 1); calMonth = d.getFullYear()+"-"+pad(d.getMonth()+1); renderCalendar(); };
+$("calGrid").onclick = e => { const b = e.target.closest("[data-cal]"); if(!b) return; calSel = b.dataset.cal; renderCalendar(); renderTimeline(); };
 function renderTimeline(){
+  renderCalendar();
   const byDay = {};
   data().entries.forEach(e=>(byDay[e.date]=byDay[e.date]||[]).push(e));
-  const days = Object.keys(byDay).sort().reverse().slice(0,30);
-  if(!days.length){ $("timeline").innerHTML = `<div class="empty">Your entries will appear here, grouped by day.</div>`; return; }
-  $("timeline").innerHTML = days.map(d=>`<div class="day"><span class="label">${dayLabel(d)}</span>`+
+  const days = Object.keys(byDay).filter(d=>d===calSel);
+  if(!days.length){ $("timeline").innerHTML = `<div class="empty">${calSel > todayStr() ? "" : "Nothing logged on this day."}</div>`; return; }
+  $("timeline").innerHTML = days.map(d=>`<div class="day">`+
     byDay[d].map(e=>{ const hide = e.private && !revealed.has(e.id);
       return `<article class="entry"><div class="meta"><span>${new Date(e.createdAt).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}${e.example?" · example":""}</span>
       <span>${e.private?`<button class="link" data-reveal="${e.id}">${hide?"Show":"Hide"}</button> · `:""}${e.example?"":`<button class="link" data-del="${e.docId}">Delete</button>`}</span></div>
